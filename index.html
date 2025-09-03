@@ -20,12 +20,14 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: calc(100% - 500px); /* Make room for phone panel */
             margin: 0 auto;
             background: white;
             border-radius: 16px;
             padding: 30px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-right: 520px; /* Push content left when phone panel is open */
+            transition: margin-right 0.3s ease;
         }
 
         .header {
@@ -335,6 +337,318 @@
             display: flex;
         }
 
+        /* PHONE PREVIEW PANEL: Right-sliding Phone Preview */
+        .phone-panel {
+            position: fixed !important;
+            top: 80px;
+            right: 0;
+            width: 480px;
+            height: calc(100vh - 80px);
+            background: #fff;
+            border-left: 1px solid #232427;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1003;
+            overflow-y: auto;
+            box-shadow: -2px 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .phone-panel.open {
+            transform: translateX(0);
+        }
+
+        .phone-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .phone-panel-header h2 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .phone-mockup {
+            position: relative;
+            width: 290px;
+            height: 600px;
+            background: transparent;
+            overflow: visible;
+            margin: 0 auto;
+        }
+
+        .phone-mockup-video {
+            position: absolute;
+            top: 22px;
+            left: 22px;
+            width: calc(100% - 44px);
+            height: calc(100% - 44px);
+            border-radius: 30px;
+            object-fit: cover;
+            z-index: 1;
+            background: #f0f0f0;
+        }
+
+        .iphone-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('./iphone-frame.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: calc(50% + 55px);
+            left: 50%;
+            transform: translate(-50%, -65%);
+            width: 76%;
+            height: 140px;
+            border-radius: 14px;
+            overflow: hidden;
+            z-index: 20;
+        }
+
+        .video-overlay:hover {
+            transform: translate(-50%, -65%) scale(1.02);
+        }
+
+        .video-overlay .video-component {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .video-overlay .video-placeholder {
+            width: 100%;
+            height: 100%;
+            background: #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+            border-radius: 14px;
+        }
+
+        .carousel-slides-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            gap: 0;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+        }
+
+        .carousel-slide-container {
+            flex-shrink: 0;
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .carousel-slide-container img,
+        .carousel-slide-container video {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+
+        .video-overlay .video-controls {
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: end !important;
+            opacity: 1 !important;
+        }
+
+        .video-overlay .gradient-overlay {
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 60% !important;
+            display: block !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9)) !important;
+        }
+
+        .video-overlay .content-overlay {
+            position: relative !important;
+            width: 100% !important;
+            padding: 20px 16px 30px 16px !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: end !important;
+            gap: 20px !important;
+            opacity: 1 !important;
+            z-index: 50 !important;
+        }
+
+        .video-overlay .text-overlay {
+            flex: 1;
+        }
+
+        .video-overlay .text-overlay p {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            line-height: 1.1;
+            white-space: pre-line;
+            overflow: hidden;
+        }
+
+        .video-overlay .cta-button {
+            display: block !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #333 !important;
+            border: none !important;
+            padding: 6px 12px !important;
+            border-radius: 16px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            backdrop-filter: blur(10px) !important;
+        }
+
+        .video-overlay .cta-button:hover {
+            background: white !important;
+            transform: scale(1.05) !important;
+        }
+
+        .carousel-indicators {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 60;
+        }
+
+        .carousel-indicators .indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .carousel-indicators .indicator.active {
+            background: rgba(255, 255, 255, 0.9);
+            transform: scale(1.2);
+        }
+
+        .preview-controls {
+            margin-bottom: 15px;
+        }
+
+        .preview-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .preview-switch input[type="radio"] {
+            margin: 0;
+        }
+
+        .demo-controls {
+            margin-bottom: 20px;
+        }
+
+        .demo-controls .input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .carousel-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .carousel-controls .btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .carousel-controls .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .carousel-controls .btn:not(:disabled):hover {
+            background: #f5f5f5;
+        }
+
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mx-2 { margin-left: 0.5rem; margin-right: 0.5rem; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -356,6 +670,12 @@
             .controls {
                 flex-direction: column;
                 align-items: center;
+            }
+
+            .phone-panel {
+                width: 100%;
+                top: 60px;
+                height: calc(100vh - 60px);
             }
         }
     </style>
@@ -401,6 +721,70 @@
                 Total slots: 0 | Filled: 0 | Empty: 0
             </div>
         </div>
+
+        <!-- PHONE PREVIEW PANEL: Right-sliding Phone Preview -->
+        <section class="phone-panel" id="phone-preview-panel">
+            <div class="phone-panel-header">
+                <h2>📱 Asset Preview</h2>
+                <button id="close-phone-panel" class="close-btn">×</button>
+            </div>
+            
+            <div class="app-preview">
+                <div class="preview-controls">
+                    <label class="preview-switch">
+                        <input type="radio" name="previewMode" value="carousel" id="previewCarousel" checked>
+                        <span>Carousel View</span>
+                    </label>
+                </div>
+                <div class="demo-controls mb-2">
+                    <select id="demo-category-select" class="input">
+                        <option value="">Select category to preview</option>
+                    </select>
+                </div>
+                <div class="phone-mockup">
+                    <!-- Background Video -->
+                    <video class="phone-mockup-video" id="phoneBgVideo" autoplay muted loop playsinline>
+                        <source src="data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhmcmVlAAAAGG1kYXQAAAGzAAAGz//wp9WAAAPn2rT7jA==" type="video/mp4">
+                        <!-- Fallback background color if video fails -->
+                    </video>
+                    
+                    <!-- Video Component Overlay -->
+                    <div class="video-overlay" id="videoOverlay">
+                        <div class="video-component">
+                            <div class="carousel-slides-wrapper" id="carouselSlidesWrapper">
+                                <div class="video-placeholder">
+                                    <span>Upload assets to see preview</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="video-controls">
+                            <div class="gradient-overlay"></div>
+                            <div class="content-overlay">
+                                <div class="text-overlay">
+                                    <p id="demo-category-title">Select Category</p>
+                                </div>
+                                <button class="cta-button">View Assets</button>
+                            </div>
+                        </div>
+                        <div class="carousel-indicators" id="carouselIndicators">
+                            <div class="indicator active"></div>
+                            <div class="indicator"></div>
+                            <div class="indicator"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- iPhone Frame Overlay -->
+                    <div class="iphone-frame"></div>
+                </div>
+                
+                <!-- Carousel Controls -->
+                <div class="carousel-controls mt-2">
+                    <button id="prev-slide" class="btn btn-secondary btn-sm" disabled>‹ Previous</button>
+                    <span id="slide-indicator" class="mx-2">0/0</span>
+                    <button id="next-slide" class="btn btn-secondary btn-sm" disabled>Next ›</button>
+                </div>
+            </div>
+        </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -448,6 +832,8 @@
                 this.user = null;
                 this.slots = {};
                 this.currentCategory = Object.keys(CATEGORIES)[0]; // First category by default
+                this.currentSlideIndex = 0;
+                this.currentCategoryAssets = [];
                 this.init();
             }
 
@@ -484,6 +870,9 @@
                     
                     // Set up real-time subscriptions
                     this.setupRealtimeSubscription();
+                    
+                    // Initialize phone preview
+                    this.initPhonePreview();
                     
                     // Bind events
                     this.bindEvents();
@@ -639,6 +1028,13 @@
                     content.classList.remove('active');
                 });
                 document.getElementById(`category-${categoryName}`).classList.add('active');
+                
+                // Update phone preview
+                const categorySelect = document.getElementById('demo-category-select');
+                if (categorySelect) {
+                    categorySelect.value = categoryName;
+                    this.updatePhonePreview(categoryName);
+                }
                 
                 this.updateStats();
             }
@@ -902,9 +1298,169 @@
                         (payload) => {
                             console.log('Real-time update:', payload);
                             this.loadSlots(); // Reload data on any change
+                            this.updatePhonePreview(); // Update preview on changes
                         }
                     )
                     .subscribe();
+            }
+
+            initPhonePreview() {
+                // Open phone preview panel by default
+                this.openPhonePreview();
+                
+                // Populate category select
+                const categorySelect = document.getElementById('demo-category-select');
+                categorySelect.innerHTML = '<option value="">Select category to preview</option>';
+                
+                Object.keys(CATEGORIES).forEach(categoryName => {
+                    const option = document.createElement('option');
+                    option.value = categoryName;
+                    option.textContent = categoryName;
+                    categorySelect.appendChild(option);
+                });
+                
+                // Set default category
+                categorySelect.value = this.currentCategory;
+                
+                // Bind phone preview events
+                categorySelect.addEventListener('change', (e) => {
+                    this.updatePhonePreview(e.target.value);
+                });
+                
+                document.getElementById('close-phone-panel').addEventListener('click', () => {
+                    this.closePhonePreview();
+                });
+                
+                document.getElementById('prev-slide').addEventListener('click', () => {
+                    this.previousSlide();
+                });
+                
+                document.getElementById('next-slide').addEventListener('click', () => {
+                    this.nextSlide();
+                });
+                
+                // Initial preview update
+                this.updatePhonePreview();
+            }
+
+            openPhonePreview() {
+                const panel = document.getElementById('phone-preview-panel');
+                panel.classList.add('open');
+            }
+
+            closePhonePreview() {
+                const panel = document.getElementById('phone-preview-panel');
+                panel.classList.remove('open');
+            }
+
+            updatePhonePreview(categoryName = null) {
+                const selectedCategory = categoryName || this.currentCategory;
+                const categorySlots = CATEGORIES[selectedCategory] || [];
+                
+                // Get assets for this category
+                this.currentCategoryAssets = categorySlots
+                    .map(slotName => this.slots[slotName])
+                    .filter(asset => asset !== null);
+                
+                // Update category title
+                document.getElementById('demo-category-title').textContent = selectedCategory;
+                
+                // Update carousel
+                this.renderCarousel();
+                
+                // Update controls
+                this.updateCarouselControls();
+            }
+
+            renderCarousel() {
+                const wrapper = document.getElementById('carouselSlidesWrapper');
+                const indicators = document.getElementById('carouselIndicators');
+                
+                if (this.currentCategoryAssets.length === 0) {
+                    // Show placeholder
+                    wrapper.innerHTML = '<div class="video-placeholder"><span>No assets in this category</span></div>';
+                    indicators.innerHTML = '<div class="indicator active"></div>';
+                    return;
+                }
+                
+                // Calculate slide width
+                const slideWidth = 100 / this.currentCategoryAssets.length;
+                
+                // Render slides
+                wrapper.innerHTML = '';
+                this.currentCategoryAssets.forEach((asset, index) => {
+                    const slide = document.createElement('div');
+                    slide.className = 'carousel-slide-container';
+                    slide.style.width = `${slideWidth}%`;
+                    
+                    if (asset.public_url.includes('.mp4') || asset.isVideo) {
+                        // Video slide
+                        const video = document.createElement('video');
+                        video.src = asset.public_url;
+                        video.autoplay = true;
+                        video.muted = true;
+                        video.loop = true;
+                        video.playsinline = true;
+                        slide.appendChild(video);
+                    } else {
+                        // Image slide
+                        const img = document.createElement('img');
+                        img.src = asset.public_url;
+                        img.alt = asset.filename;
+                        slide.appendChild(img);
+                    }
+                    
+                    wrapper.appendChild(slide);
+                });
+                
+                // Render indicators
+                indicators.innerHTML = '';
+                this.currentCategoryAssets.forEach((_, index) => {
+                    const indicator = document.createElement('div');
+                    indicator.className = `indicator ${index === this.currentSlideIndex ? 'active' : ''}`;
+                    indicator.addEventListener('click', () => this.goToSlide(index));
+                    indicators.appendChild(indicator);
+                });
+                
+                // Set initial transform
+                this.goToSlide(0);
+            }
+
+            goToSlide(index) {
+                if (index < 0 || index >= this.currentCategoryAssets.length) return;
+                
+                this.currentSlideIndex = index;
+                const wrapper = document.getElementById('carouselSlidesWrapper');
+                const transform = `translateX(-${index * (100 / this.currentCategoryAssets.length)}%)`;
+                wrapper.style.transform = transform;
+                
+                // Update indicators
+                document.querySelectorAll('#carouselIndicators .indicator').forEach((indicator, i) => {
+                    indicator.classList.toggle('active', i === index);
+                });
+                
+                this.updateCarouselControls();
+            }
+
+            previousSlide() {
+                this.goToSlide(this.currentSlideIndex - 1);
+            }
+
+            nextSlide() {
+                this.goToSlide(this.currentSlideIndex + 1);
+            }
+
+            updateCarouselControls() {
+                const prevBtn = document.getElementById('prev-slide');
+                const nextBtn = document.getElementById('next-slide');
+                const indicator = document.getElementById('slide-indicator');
+                
+                const totalSlides = this.currentCategoryAssets.length;
+                
+                prevBtn.disabled = this.currentSlideIndex === 0 || totalSlides === 0;
+                nextBtn.disabled = this.currentSlideIndex === totalSlides - 1 || totalSlides === 0;
+                
+                indicator.textContent = totalSlides === 0 ? '0/0' : `${this.currentSlideIndex + 1}/${totalSlides}`;
             }
 
             bindEvents() {
