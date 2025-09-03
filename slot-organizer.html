@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slot Video/Image Organizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .categories {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+            overflow-x: auto;
+        }
+
+        .category-tab {
+            padding: 12px 24px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 120px;
+        }
+
+        .category-tab.active {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .category-tab:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .category-content {
+            display: none;
+        }
+
+        .category-content.active {
+            display: block;
+        }
+
+        .slots-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            max-width: 100%;
+        }
+
+        .slot {
+            aspect-ratio: 1;
+            border: 3px dashed #ccc;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafafa;
+            position: relative;
+            min-height: 120px;
+        }
+
+        .slot:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .slot.drag-over {
+            border-color: #28a745;
+            background: #f0fff4;
+            transform: scale(1.05);
+        }
+
+        .slot.filled {
+            border: 3px solid #28a745;
+            background: white;
+        }
+
+        .slot-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .slot-preview {
+            width: 80%;
+            height: 60%;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .slot-filename {
+            font-size: 0.75rem;
+            text-align: center;
+            color: #666;
+            word-break: break-word;
+            max-height: 30%;
+            overflow: hidden;
+        }
+
+        .slot-empty {
+            color: #999;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .slot-url {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 5px 8px;
+            font-size: 0.7rem;
+            margin-top: 5px;
+            width: 100%;
+            text-align: center;
+            color: #495057;
+            user-select: all;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            color: #666;
+        }
+
+        .drop-zone-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(102, 126, 234, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .drop-zone-overlay.active {
+            display: flex;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .slots-container {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 10px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="drop-zone-overlay" id="dropOverlay">
+        <div>Drop your files anywhere!</div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Slot Organizer</h1>
+            <p>Drag and drop videos & images into categorized slots</p>
+        </div>
+
+        <div class="categories" id="categories">
+            <button class="category-tab active" data-category="3d">3D Images</button>
+            <button class="category-tab" data-category="photos">Real Photos</button>
+            <button class="category-tab" data-category="ai">AI Images</button>
+            <button class="category-tab" data-category="videos">Videos</button>
+            <button class="category-tab" data-category="graphics">Graphics</button>
+        </div>
+
+        <div id="3d" class="category-content active">
+            <div class="slots-container" id="slots-3d"></div>
+        </div>
+
+        <div id="photos" class="category-content">
+            <div class="slots-container" id="slots-photos"></div>
+        </div>
+
+        <div id="ai" class="category-content">
+            <div class="slots-container" id="slots-ai"></div>
+        </div>
+
+        <div id="videos" class="category-content">
+            <div class="slots-container" id="slots-videos"></div>
+        </div>
+
+        <div id="graphics" class="category-content">
+            <div class="slots-container" id="slots-graphics"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="clearCurrentCategory()">🗑️ Clear Current Category</button>
+            <button class="btn btn-success" onclick="downloadAll()">📥 Download All</button>
+            <button class="btn btn-secondary" onclick="exportUrls()">🔗 Export All URLs</button>
+        </div>
+
+        <div class="stats" id="stats">
+            Total files: 0 | Current category: 0 files
+        </div>
+    </div>
+
+    <script>
+        class SlotOrganizer {
+            constructor() {
+                this.categories = ['3d', 'photos', 'ai', 'videos', 'graphics'];
+                this.slotsPerCategory = 10;
+                this.currentCategory = '3d';
+                this.data = {};
+                this.baseUrl = 'https://your-domain.com/media/';
+                
+                // Initialize data structure
+                this.categories.forEach(cat => {
+                    this.data[cat] = new Array(this.slotsPerCategory).fill(null);
+                });
+                
+                this.init();
+            }
+
+            init() {
+                this.createSlots();
+                this.bindEvents();
+                this.updateStats();
+            }
+
+            createSlots() {
+                this.categories.forEach(category => {
+                    const container = document.getElementById(`slots-${category}`);
+                    container.innerHTML = '';
+                    
+                    for (let i = 0; i < this.slotsPerCategory; i++) {
+                        const slot = document.createElement('div');
+                        slot.className = 'slot';
+                        slot.dataset.category = category;
+                        slot.dataset.index = i;
+                        
+                        const content = document.createElement('div');
+                        content.className = 'slot-content';
+                        
+                        const empty = document.createElement('div');
+                        empty.className = 'slot-empty';
+                        empty.textContent = `Slot ${i + 1}`;
+                        content.appendChild(empty);
+                        
+                        slot.appendChild(content);
+                        container.appendChild(slot);
+                        
+                        this.bindSlotEvents(slot);
+                    }
+                });
+            }
+
+            bindEvents() {
+                // Category tabs
+                document.querySelectorAll('.category-tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const category = e.target.dataset.category;
+                        this.switchCategory(category);
+                    });
+                });
+
+                // Global drag and drop
+                document.addEventListener('dragenter', this.handleDragEnter.bind(this));
+                document.addEventListener('dragover', this.handleDragOver.bind(this));
+                document.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                document.addEventListener('drop', this.handleGlobalDrop.bind(this));
+
+                // Prevent default drag behavior
+                document.addEventListener('dragover', (e) => e.preventDefault());
+                document.addEventListener('drop', (e) => e.preventDefault());
+            }
+
+            bindSlotEvents(slot) {
+                slot.addEventListener('dragenter', this.handleSlotDragEnter.bind(this));
+                slot.addEventListener('dragover', this.handleSlotDragOver.bind(this));
+                slot.addEventListener('dragleave', this.handleSlotDragLeave.bind(this));
+                slot.addEventListener('drop', this.handleSlotDrop.bind(this));
+                slot.addEventListener('click', this.handleSlotClick.bind(this));
+            }
+
+            switchCategory(category) {
+                this.currentCategory = category;
+                
+                // Update tabs
+                document.querySelectorAll('.category-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelector(`[data-category="${category}"]`).classList.add('active');
+                
+                // Update content
+                document.querySelectorAll('.category-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(category).classList.add('active');
+                
+                this.updateStats();
+            }
+
+            handleDragEnter(e) {
+                e.preventDefault();
+                document.getElementById('dropOverlay').classList.add('active');
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+            }
+
+            handleDragLeave(e) {
+                if (e.clientX === 0 && e.clientY === 0) {
+                    document.getElementById('dropOverlay').classList.remove('active');
+                }
+            }
+
+            handleGlobalDrop(e) {
+                e.preventDefault();
+                document.getElementById('dropOverlay').classList.remove('active');
+                
+                if (e.dataTransfer.files.length > 0) {
+                    this.processFiles(e.dataTransfer.files);
+                }
+            }
+
+            handleSlotDragEnter(e) {
+                e.preventDefault();
+                e.target.closest('.slot').classList.add('drag-over');
+            }
+
+            handleSlotDragOver(e) {
+                e.preventDefault();
+            }
+
+            handleSlotDragLeave(e) {
+                e.target.closest('.slot').classList.remove('drag-over');
+            }
+
+            handleSlotDrop(e) {
+                e.preventDefault();
+                const slot = e.target.closest('.slot');
+                slot.classList.remove('drag-over');
+                
+                if (e.dataTransfer.files.length > 0) {
+                    const category = slot.dataset.category;
+                    const index = parseInt(slot.dataset.index);
+                    this.addFileToSlot(e.dataTransfer.files[0], category, index);
+                }
+            }
+
+            handleSlotClick(e) {
+                const slot = e.target.closest('.slot');
+                const category = slot.dataset.category;
+                const index = parseInt(slot.dataset.index);
+                
+                if (this.data[category][index]) {
+                    // Open file picker to replace
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*,video/*';
+                    input.onchange = (e) => {
+                        if (e.target.files[0]) {
+                            this.addFileToSlot(e.target.files[0], category, index);
+                        }
+                    };
+                    input.click();
+                } else {
+                    // Open file picker to add
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*,video/*';
+                    input.onchange = (e) => {
+                        if (e.target.files[0]) {
+                            this.addFileToSlot(e.target.files[0], category, index);
+                        }
+                    };
+                    input.click();
+                }
+            }
+
+            processFiles(files) {
+                Array.from(files).forEach((file, index) => {
+                    const emptySlot = this.findEmptySlot(this.currentCategory);
+                    if (emptySlot !== -1) {
+                        this.addFileToSlot(file, this.currentCategory, emptySlot);
+                    }
+                });
+            }
+
+            findEmptySlot(category) {
+                return this.data[category].findIndex(slot => slot === null);
+            }
+
+            addFileToSlot(file, category, index) {
+                const fileData = {
+                    file: file,
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    url: this.generateUrl(file.name),
+                    preview: null
+                };
+
+                this.data[category][index] = fileData;
+                
+                // Create preview
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        fileData.preview = e.target.result;
+                        this.updateSlotDisplay(category, index);
+                    };
+                    reader.readAsDataURL(file);
+                } else if (file.type.startsWith('video/')) {
+                    const video = document.createElement('video');
+                    video.src = URL.createObjectURL(file);
+                    video.addEventListener('loadeddata', () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 200;
+                        canvas.height = 150;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        fileData.preview = canvas.toDataURL();
+                        this.updateSlotDisplay(category, index);
+                        URL.revokeObjectURL(video.src);
+                    });
+                }
+                
+                this.updateSlotDisplay(category, index);
+                this.updateStats();
+            }
+
+            updateSlotDisplay(category, index) {
+                const slot = document.querySelector(`[data-category="${category}"][data-index="${index}"]`);
+                const fileData = this.data[category][index];
+                
+                if (!fileData) {
+                    slot.className = 'slot';
+                    slot.innerHTML = `
+                        <div class="slot-content">
+                            <div class="slot-empty">Slot ${index + 1}</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                slot.className = 'slot filled';
+                
+                let previewHtml = '';
+                if (fileData.preview) {
+                    if (fileData.type.startsWith('image/')) {
+                        previewHtml = `<img src="${fileData.preview}" alt="${fileData.name}" class="slot-preview">`;
+                    } else if (fileData.type.startsWith('video/')) {
+                        previewHtml = `<img src="${fileData.preview}" alt="${fileData.name}" class="slot-preview">`;
+                    }
+                }
+                
+                slot.innerHTML = `
+                    <div class="slot-content">
+                        ${previewHtml}
+                        <div class="slot-filename">${fileData.name}</div>
+                        <input type="text" class="slot-url" value="${fileData.url}" readonly onclick="this.select()">
+                    </div>
+                `;
+            }
+
+            generateUrl(filename) {
+                const timestamp = Date.now();
+                const cleanName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+                return `${this.baseUrl}${this.currentCategory}/${timestamp}_${cleanName}`;
+            }
+
+            updateStats() {
+                const totalFiles = Object.values(this.data).flat().filter(item => item !== null).length;
+                const currentCategoryFiles = this.data[this.currentCategory].filter(item => item !== null).length;
+                
+                document.getElementById('stats').textContent = 
+                    `Total files: ${totalFiles} | Current category: ${currentCategoryFiles} files`;
+            }
+
+            clearCurrentCategory() {
+                if (confirm(`Clear all files in ${this.currentCategory} category?`)) {
+                    this.data[this.currentCategory] = new Array(this.slotsPerCategory).fill(null);
+                    
+                    document.querySelectorAll(`[data-category="${this.currentCategory}"]`).forEach((slot, index) => {
+                        this.updateSlotDisplay(this.currentCategory, index);
+                    });
+                    
+                    this.updateStats();
+                }
+            }
+
+            downloadAll() {
+                const allFiles = [];
+                
+                Object.keys(this.data).forEach(category => {
+                    this.data[category].forEach((item, index) => {
+                        if (item) {
+                            allFiles.push({
+                                category: category,
+                                index: index,
+                                file: item.file,
+                                name: item.name
+                            });
+                        }
+                    });
+                });
+
+                if (allFiles.length === 0) {
+                    alert('No files to download!');
+                    return;
+                }
+
+                // Create a simple download list
+                let downloadInfo = 'Files organized by category:\n\n';
+                
+                Object.keys(this.data).forEach(category => {
+                    const categoryFiles = this.data[category].filter(item => item !== null);
+                    if (categoryFiles.length > 0) {
+                        downloadInfo += `${category.toUpperCase()}:\n`;
+                        categoryFiles.forEach((item, index) => {
+                            downloadInfo += `- ${item.name} (${(item.size / 1024).toFixed(1)} KB)\n`;
+                        });
+                        downloadInfo += '\n';
+                    }
+                });
+
+                // Create and download info file
+                const blob = new Blob([downloadInfo], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'slot_organizer_files.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                alert(`File organization info downloaded! Found ${allFiles.length} files across categories.`);
+            }
+
+            exportUrls() {
+                let urlList = 'Generated URLs for all files:\n\n';
+                
+                Object.keys(this.data).forEach(category => {
+                    const categoryFiles = this.data[category].filter(item => item !== null);
+                    if (categoryFiles.length > 0) {
+                        urlList += `${category.toUpperCase()}:\n`;
+                        categoryFiles.forEach(item => {
+                            urlList += `${item.name}: ${item.url}\n`;
+                        });
+                        urlList += '\n';
+                    }
+                });
+
+                if (urlList === 'Generated URLs for all files:\n\n') {
+                    alert('No files to export URLs for!');
+                    return;
+                }
+
+                // Copy to clipboard and download
+                navigator.clipboard.writeText(urlList).then(() => {
+                    alert('URLs copied to clipboard!');
+                }).catch(() => {
+                    // Fallback download
+                    const blob = new Blob([urlList], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'slot_organizer_urls.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    
+                    alert('URLs downloaded as file!');
+                });
+            }
+        }
+
+        // Global functions
+        function clearCurrentCategory() {
+            organizer.clearCurrentCategory();
+        }
+
+        function downloadAll() {
+            organizer.downloadAll();
+        }
+
+        function exportUrls() {
+            organizer.exportUrls();
+        }
+
+        // Initialize the application
+        const organizer = new SlotOrganizer();
+    </script>
+</body>
+</html>

@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudWalk Slot Asset Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .auth-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border-radius: 20px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #667eea;
+        }
+
+        .slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .slot-card {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            background: #fafafa;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .slot-card:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .slot-card.has-asset {
+            border-color: #28a745;
+            background: white;
+        }
+
+        .slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .slot-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            text-transform: capitalize;
+        }
+
+        .slot-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-empty {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+
+        .status-filled {
+            background: #55a3ff;
+            color: white;
+        }
+
+        .slot-content {
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .slot-content.drag-over {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .slot-preview {
+            max-width: 100%;
+            max-height: 150px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .slot-empty {
+            text-align: center;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .slot-info {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .slot-filename {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 5px;
+            word-break: break-word;
+        }
+
+        .slot-url {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 5px 8px;
+            font-size: 0.7rem;
+            width: 100%;
+            text-align: center;
+            color: #495057;
+            user-select: all;
+        }
+
+        .slot-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(102, 126, 234, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .drop-zone-overlay.active {
+            display: flex;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .slots-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="drop-zone-overlay" id="dropOverlay">
+        <div>Drop your files anywhere!</div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🎬 CloudWalk Asset Manager</h1>
+                <p>Shared slot management for stakeholders</p>
+            </div>
+            <div class="auth-section">
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <img id="userAvatar" class="avatar" src="" alt="User">
+                    <span id="userName"></span>
+                    <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+                </div>
+                <button id="signInBtn" class="btn btn-primary" onclick="signIn()" style="display: none;">
+                    🔐 Sign in with GitHub
+                </button>
+                <div id="authLoading" class="loading">Checking authentication...</div>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error" style="display: none;"></div>
+        <div id="successMessage" class="success" style="display: none;"></div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="slots-grid" id="slotsGrid"></div>
+            
+            <div class="controls">
+                <button class="btn btn-success" onclick="exportAll()">📥 Export All URLs</button>
+                <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh Data</button>
+            </div>
+            
+            <div class="stats" id="stats">
+                Total slots: 0 | Filled: 0 | Empty: 0
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Configuration
+        const SUPABASE_URL = 'https://gouolvsfxrupayzmomj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvdW9sdnNmeHJ1cGF5em1tb21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MzIxMjAsImV4cCI6MjA3MjUwODEyMH0.QsIG3xo5rqOKoiTEbIuzf8_IutgEglJPUiOeFXJQUj4';
+        const GITHUB_CLIENT_ID = 'YOUR_ACTUAL_CLIENT_ID_FROM_STEP_1';
+        
+        // Slot names based on your video files
+        const SLOT_NAMES = [
+            'checkout',
+            'create_bill',
+            'dirf',
+            'infinite_card',
+            'infinite_cash_can_request_limit',
+            'infinite_cash',
+            'instant_settlement',
+            'pay_bill',
+            'piselli',
+            'pix_credit',
+            'referral',
+            'supercobra',
+            'tap'
+        ];
+
+        class CloudWalkAssetManager {
+            constructor() {
+                this.supabase = null;
+                this.user = null;
+                this.slots = {};
+                this.init();
+            }
+
+            async init() {
+                try {
+                    // Initialize Supabase
+                    if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+                        this.showError('Please configure Supabase credentials');
+                        return;
+                    }
+                    
+                    this.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    
+                    // Check authentication
+                    await this.checkAuth();
+                    
+                    // Initialize slots
+                    this.initializeSlots();
+                    
+                    // Set up real-time subscriptions
+                    this.setupRealtimeSubscription();
+                    
+                    // Bind events
+                    this.bindEvents();
+                    
+                } catch (error) {
+                    console.error('Initialization error:', error);
+                    this.showError('Failed to initialize application');
+                }
+            }
+
+            async checkAuth() {
+                const { data: { user } } = await this.supabase.auth.getUser();
+                
+                if (user) {
+                    // Check if user email is from cloudwalk.io domain
+                    if (!user.email || !user.email.endsWith('@cloudwalk.io')) {
+                        await this.supabase.auth.signOut();
+                        this.showError('Access restricted to @cloudwalk.io domain users only');
+                        this.showSignInButton();
+                        return;
+                    }
+                    
+                    this.user = user;
+                    this.showUserInfo(user);
+                    this.showMainContent();
+                    await this.loadSlots();
+                } else {
+                    this.showSignInButton();
+                }
+                
+                this.hideAuthLoading();
+            }
+
+            showUserInfo(user) {
+                document.getElementById('userName').textContent = user.user_metadata.full_name || user.email;
+                document.getElementById('userAvatar').src = user.user_metadata.avatar_url || '';
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('signInBtn').style.display = 'none';
+            }
+
+            showSignInButton() {
+                document.getElementById('userInfo').style.display = 'none';
+                document.getElementById('signInBtn').style.display = 'block';
+            }
+
+            showMainContent() {
+                document.getElementById('mainContent').style.display = 'block';
+            }
+
+            hideAuthLoading() {
+                document.getElementById('authLoading').style.display = 'none';
+            }
+
+            async signIn() {
+                try {
+                    const { error } = await this.supabase.auth.signInWithOAuth({
+                        provider: 'github',
+                        options: {
+                            redirectTo: window.location.origin
+                        }
+                    });
+                    
+                    if (error) {
+                        console.error('Sign in error:', error);
+                        this.showError('Failed to sign in with GitHub');
+                    }
+                } catch (error) {
+                    console.error('Sign in error:', error);
+                    this.showError('Failed to sign in');
+                }
+            }
+
+            async signOut() {
+                try {
+                    const { error } = await this.supabase.auth.signOut();
+                    if (error) throw error;
+                    
+                    this.user = null;
+                    this.showSignInButton();
+                    document.getElementById('mainContent').style.display = 'none';
+                    document.getElementById('authLoading').style.display = 'block';
+                } catch (error) {
+                    console.error('Sign out error:', error);
+                    this.showError('Failed to sign out');
+                }
+            }
+
+            initializeSlots() {
+                SLOT_NAMES.forEach(slotName => {
+                    this.slots[slotName] = null;
+                });
+                this.renderSlots();
+            }
+
+            renderSlots() {
+                const grid = document.getElementById('slotsGrid');
+                grid.innerHTML = '';
+                
+                SLOT_NAMES.forEach(slotName => {
+                    const slotData = this.slots[slotName];
+                    const slotCard = this.createSlotCard(slotName, slotData);
+                    grid.appendChild(slotCard);
+                });
+                
+                this.updateStats();
+            }
+
+            createSlotCard(slotName, slotData) {
+                const card = document.createElement('div');
+                card.className = `slot-card ${slotData ? 'has-asset' : ''}`;
+                card.dataset.slot = slotName;
+                
+                const isEmpty = !slotData;
+                const statusClass = isEmpty ? 'status-empty' : 'status-filled';
+                const statusText = isEmpty ? 'Empty' : 'Filled';
+                
+                let contentHtml = '';
+                if (slotData) {
+                    contentHtml = `
+                        <img src="${slotData.preview_url || slotData.public_url}" alt="${slotData.filename}" class="slot-preview">
+                        <div class="slot-info">
+                            <div class="slot-filename">${slotData.filename}</div>
+                            <input type="text" class="slot-url" value="${slotData.public_url}" readonly onclick="this.select()">
+                        </div>
+                        <div class="slot-actions">
+                            <button class="btn btn-primary" onclick="replaceAsset('${slotName}')">📝 Replace</button>
+                            <button class="btn btn-danger" onclick="removeAsset('${slotName}')">🗑️ Remove</button>
+                        </div>
+                    `;
+                } else {
+                    contentHtml = `
+                        <div class="slot-empty">
+                            <div>📁</div>
+                            <div>Drop image or click to upload</div>
+                        </div>
+                        <div class="slot-actions">
+                            <button class="btn btn-success" onclick="uploadAsset('${slotName}')">📤 Upload</button>
+                        </div>
+                    `;
+                }
+                
+                card.innerHTML = `
+                    <div class="slot-header">
+                        <div class="slot-name">${slotName.replace(/_/g, ' ')}</div>
+                        <div class="slot-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="slot-content" ondrop="handleDrop(event, '${slotName}')" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
+                        ${contentHtml}
+                    </div>
+                `;
+                
+                return card;
+            }
+
+            async loadSlots() {
+                try {
+                    const { data, error } = await this.supabase
+                        .from('slot_assets')
+                        .select('*');
+                    
+                    if (error) throw error;
+                    
+                    // Reset slots
+                    SLOT_NAMES.forEach(name => this.slots[name] = null);
+                    
+                    // Populate with data
+                    data.forEach(item => {
+                        this.slots[item.slot_name] = item;
+                    });
+                    
+                    this.renderSlots();
+                    
+                } catch (error) {
+                    console.error('Error loading slots:', error);
+                    this.showError('Failed to load slot data');
+                }
+            }
+
+            async uploadAsset(slotName) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async (e) => {
+                    if (e.target.files[0]) {
+                        await this.processFileUpload(e.target.files[0], slotName);
+                    }
+                };
+                input.click();
+            }
+
+            async processFileUpload(file, slotName) {
+                try {
+                    this.showSuccess('Uploading file...');
+                    
+                    // Upload file to Supabase Storage
+                    const fileName = `${slotName}_${Date.now()}_${file.name}`;
+                    const { data: uploadData, error: uploadError } = await this.supabase.storage
+                        .from('slot-assets')
+                        .upload(fileName, file);
+                    
+                    if (uploadError) throw uploadError;
+                    
+                    // Get public URL
+                    const { data: urlData } = this.supabase.storage
+                        .from('slot-assets')
+                        .getPublicUrl(fileName);
+                    
+                    // Save to database
+                    const slotData = {
+                        slot_name: slotName,
+                        filename: file.name,
+                        public_url: urlData.publicUrl,
+                        storage_path: fileName,
+                        uploaded_by: this.user.email,
+                        updated_at: new Date().toISOString()
+                    };
+                    
+                    const { error: dbError } = await this.supabase
+                        .from('slot_assets')
+                        .upsert(slotData, { onConflict: 'slot_name' });
+                    
+                    if (dbError) throw dbError;
+                    
+                    this.showSuccess('Asset uploaded successfully!');
+                    
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    this.showError('Failed to upload asset');
+                }
+            }
+
+            async removeAsset(slotName) {
+                if (!confirm(`Remove asset from ${slotName}?`)) return;
+                
+                try {
+                    const slotData = this.slots[slotName];
+                    
+                    // Delete from storage
+                    if (slotData && slotData.storage_path) {
+                        await this.supabase.storage
+                            .from('slot-assets')
+                            .remove([slotData.storage_path]);
+                    }
+                    
+                    // Delete from database
+                    const { error } = await this.supabase
+                        .from('slot_assets')
+                        .delete()
+                        .eq('slot_name', slotName);
+                    
+                    if (error) throw error;
+                    
+                    this.showSuccess('Asset removed successfully!');
+                    
+                } catch (error) {
+                    console.error('Remove error:', error);
+                    this.showError('Failed to remove asset');
+                }
+            }
+
+            setupRealtimeSubscription() {
+                this.supabase
+                    .channel('slot_assets')
+                    .on('postgres_changes', 
+                        { event: '*', schema: 'public', table: 'slot_assets' },
+                        (payload) => {
+                            console.log('Real-time update:', payload);
+                            this.loadSlots(); // Reload data on any change
+                        }
+                    )
+                    .subscribe();
+            }
+
+            updateStats() {
+                const total = SLOT_NAMES.length;
+                const filled = Object.values(this.slots).filter(slot => slot !== null).length;
+                const empty = total - filled;
+                
+                document.getElementById('stats').textContent = 
+                    `Total slots: ${total} | Filled: ${filled} | Empty: ${empty}`;
+            }
+
+            bindEvents() {
+                // Global drag and drop
+                document.addEventListener('dragenter', this.handleGlobalDragEnter.bind(this));
+                document.addEventListener('dragover', this.handleGlobalDragOver.bind(this));
+                document.addEventListener('dragleave', this.handleGlobalDragLeave.bind(this));
+                document.addEventListener('drop', this.handleGlobalDrop.bind(this));
+            }
+
+            handleGlobalDragEnter(e) {
+                e.preventDefault();
+                document.getElementById('dropOverlay').classList.add('active');
+            }
+
+            handleGlobalDragOver(e) {
+                e.preventDefault();
+            }
+
+            handleGlobalDragLeave(e) {
+                if (e.clientX === 0 && e.clientY === 0) {
+                    document.getElementById('dropOverlay').classList.remove('active');
+                }
+            }
+
+            handleGlobalDrop(e) {
+                e.preventDefault();
+                document.getElementById('dropOverlay').classList.remove('active');
+                // Global drop doesn't auto-assign, user needs to drop on specific slots
+            }
+
+            async exportAll() {
+                const filledSlots = Object.entries(this.slots).filter(([name, data]) => data !== null);
+                
+                if (filledSlots.length === 0) {
+                    alert('No assets to export!');
+                    return;
+                }
+                
+                let exportText = 'CloudWalk Asset URLs:\n\n';
+                filledSlots.forEach(([name, data]) => {
+                    exportText += `${name.replace(/_/g, ' ')}: ${data.public_url}\n`;
+                });
+                
+                try {
+                    await navigator.clipboard.writeText(exportText);
+                    this.showSuccess('URLs copied to clipboard!');
+                } catch (error) {
+                    // Fallback download
+                    const blob = new Blob([exportText], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'cloudwalk-asset-urls.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showSuccess('URLs downloaded as file!');
+                }
+            }
+
+            async refreshData() {
+                await this.loadSlots();
+                this.showSuccess('Data refreshed!');
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            }
+
+            showSuccess(message) {
+                const successDiv = document.getElementById('successMessage');
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                setTimeout(() => {
+                    successDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Global functions
+        let assetManager;
+
+        function signIn() {
+            assetManager.signIn();
+        }
+
+        function signOut() {
+            assetManager.signOut();
+        }
+
+        function uploadAsset(slotName) {
+            assetManager.uploadAsset(slotName);
+        }
+
+        function replaceAsset(slotName) {
+            assetManager.uploadAsset(slotName); // Same as upload, will replace
+        }
+
+        function removeAsset(slotName) {
+            assetManager.removeAsset(slotName);
+        }
+
+        function handleDrop(event, slotName) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const slot = event.target.closest('.slot-content');
+            slot.classList.remove('drag-over');
+            
+            if (event.dataTransfer.files.length > 0) {
+                assetManager.processFileUpload(event.dataTransfer.files[0], slotName);
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+        }
+
+        function handleDragEnter(event) {
+            event.preventDefault();
+            event.target.closest('.slot-content').classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.target.closest('.slot-content').classList.remove('drag-over');
+        }
+
+        function exportAll() {
+            assetManager.exportAll();
+        }
+
+        function refreshData() {
+            assetManager.refreshData();
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            assetManager = new CloudWalkAssetManager();
+        });
+    </script>
+</body>
+</html>

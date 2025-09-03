@@ -1,0 +1,36 @@
+{
+  "name": "cloudwalk-asset-manager",
+  "version": "1.0.0",
+  "description": "Shared slot management system for CloudWalk stakeholders",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "dev-node": "npx http-server -c-1 -p 8000",
+    "test": "echo \"Open index.html in a browser or run npm run dev\"",
+    "deploy": "echo \"Push to GitHub to auto-deploy via GitHub Pages\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cloudwalk/simple_slot_assets.git"
+  },
+  "keywords": [
+    "asset-management",
+    "cloudwalk",
+    "supabase",
+    "github-pages",
+    "real-time",
+    "collaboration"
+  ],
+  "author": "CloudWalk Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cloudwalk/simple_slot_assets/issues"
+  },
+  "homepage": "https://github.com/cloudwalk/simple_slot_assets#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
