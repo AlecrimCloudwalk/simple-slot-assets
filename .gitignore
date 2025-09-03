@@ -48,6 +48,7 @@ secrets.js
 *.avi
 *.mkv
 
-# But keep the example folder structure
+# But keep the example folder structure and app assets
 !example folder/
 !example folder/*.md
+!app-bg-video.mp4

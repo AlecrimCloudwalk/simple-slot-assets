@@ -1128,7 +1128,7 @@
                 if (slotData) {
                     const isUploading = slotData.isLocal;
                     const loadingIndicator = isUploading ? '<div style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.7);color:white;padding:2px 6px;border-radius:3px;font-size:0.7rem;">📤 Uploading...</div>' : '';
-                    const urlField = isUploading ? '<div class="slot-url" style="background:#fff3cd;color:#856404;">Upload in progress...</div>' : `<input type="text" class="slot-url" value="${slotData.public_url}" readonly onclick="this.select()">`;
+                    const urlField = isUploading ? '<div class="slot-url" style="background:#fff3cd;color:#856404;">Upload in progress...</div>' : `<input type="text" class="slot-url" value="${slotData.public_url}" readonly onclick="copyToClipboard('${slotData.public_url}')" style="cursor:pointer" title="Click to copy URL">`;
                     
                     contentHtml = `
                         ${loadingIndicator}
@@ -1282,6 +1282,8 @@
                         };
                         this.slots[slotName] = tempData;
                         this.renderSlot(slotName);
+                        // Also update phone preview immediately
+                        this.updatePhonePreviewInstant(slotName, e.target.result, file.name);
                     };
                     reader.readAsDataURL(file);
                 } else if (file.type.startsWith('video/')) {
@@ -1307,10 +1309,26 @@
                         };
                         this.slots[slotName] = tempData;
                         this.renderSlot(slotName);
+                        // Also update phone preview immediately  
+                        this.updatePhonePreviewInstant(slotName, canvas.toDataURL(), file.name);
                         
                         URL.revokeObjectURL(url);
                     });
                 }
+            }
+
+            updatePhonePreviewInstant(slotName, previewUrl, filename) {
+                // Only update if this slot is in the current category
+                const currentCategorySlots = CATEGORIES[this.currentCategory] || [];
+                if (!currentCategorySlots.includes(slotName)) return;
+                
+                // Update the current category assets for instant preview
+                const slotIndex = currentCategorySlots.indexOf(slotName);
+                if (slotIndex === -1) return;
+                
+                // Update carousel instantly
+                this.currentCategoryAssets = [...currentCategorySlots];
+                this.renderCarousel();
             }
 
             renderSlot(slotName) {
@@ -1626,6 +1644,22 @@
 
         function removeAsset(slotName) {
             assetManager.removeAsset(slotName);
+        }
+
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                assetManager.showSuccess('URL copied to clipboard! 📋');
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                assetManager.showSuccess('URL copied to clipboard! 📋');
+            }
         }
 
         function handleDrop(event, slotName) {
