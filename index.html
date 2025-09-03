@@ -603,18 +603,7 @@
             margin: 0;
         }
 
-        .demo-controls {
-            margin-bottom: 20px;
-        }
 
-        .demo-controls .input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-        }
 
         .carousel-controls {
             display: flex;
@@ -688,8 +677,8 @@
     <div class="container">
         <div class="header">
             <div>
-                <h1>🎬 CloudWalk Asset Manager</h1>
-                <p>Shared slot management for stakeholders</p>
+                <h1>Asset Manager</h1>
+                <p>Shared slot management for App's home banners</p>
             </div>
             <div class="auth-section">
                 <div id="userInfo" class="user-info" style="display: none;">
@@ -736,15 +725,11 @@
                         <span>Carousel View</span>
                     </label>
                 </div>
-                <div class="demo-controls mb-2">
-                    <select id="demo-category-select" class="input">
-                        <option value="">Select category to preview</option>
-                    </select>
-                </div>
+
                 <div class="phone-mockup">
                     <!-- Background Video -->
                     <video class="phone-mockup-video" id="phoneBgVideo" autoplay muted loop playsinline>
-                        <source src="data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhmcmVlAAAAGG1kYXQAAAGzAAAGz//wp9WAAAPn2rT7jA==" type="video/mp4">
+                        <source src="./app-bg-video.mp4" type="video/mp4">
                         <!-- Fallback background color if video fails -->
                     </video>
                     
@@ -1029,12 +1014,8 @@
                 });
                 document.getElementById(`category-${categoryName}`).classList.add('active');
                 
-                // Update phone preview
-                const categorySelect = document.getElementById('demo-category-select');
-                if (categorySelect) {
-                    categorySelect.value = categoryName;
-                    this.updatePhonePreview(categoryName);
-                }
+                // Update phone preview automatically
+                this.updatePhonePreview(categoryName);
                 
                 this.updateStats();
             }
@@ -1308,25 +1289,7 @@
                 // Open phone preview panel by default
                 this.openPhonePreview();
                 
-                // Populate category select
-                const categorySelect = document.getElementById('demo-category-select');
-                categorySelect.innerHTML = '<option value="">Select category to preview</option>';
-                
-                Object.keys(CATEGORIES).forEach(categoryName => {
-                    const option = document.createElement('option');
-                    option.value = categoryName;
-                    option.textContent = categoryName;
-                    categorySelect.appendChild(option);
-                });
-                
-                // Set default category
-                categorySelect.value = this.currentCategory;
-                
                 // Bind phone preview events
-                categorySelect.addEventListener('change', (e) => {
-                    this.updatePhonePreview(e.target.value);
-                });
-                
                 document.getElementById('close-phone-panel').addEventListener('click', () => {
                     this.closePhonePreview();
                 });
@@ -1339,8 +1302,8 @@
                     this.nextSlide();
                 });
                 
-                // Initial preview update
-                this.updatePhonePreview();
+                // Initial preview update with current category
+                this.updatePhonePreview(this.currentCategory);
             }
 
             openPhonePreview() {
