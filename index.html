@@ -834,34 +834,44 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvdW9sdnNmeHJ1cGF5em1tb21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MzIxMjAsImV4cCI6MjA3MjUwODEyMH0.QsIG3xo5rqOKoiTEbIuzf8_IutgEglJPUiOeFXJQUj4';
         const GITHUB_CLIENT_ID = 'Ov23lilV3kXkuTBByu9H';
         
-        // Categories and their slots (evenly distributed)
-        const CATEGORIES = {
-            'AI Images': [
-                'piselli',
-                'supercobra',
-                'referral'
-            ],
-            '3D Images': [
-                'infinite_card',
-                'infinite_cash'
-            ],
-            'Real Footage': [
-                'checkout', 
-                'pay_bill'
-            ],
-            'Mercadinho': [
-                'create_bill',
-                'instant_settlement'
-            ],
-            'Loja de Roupa': [
-                'dirf',
-                'tap'
-            ],
-            'Sala Beleza/Barbearia': [
-                'infinite_cash_can_request_limit',
-                'pix_credit'
-            ]
-        };
+        // All 13 slots based on video file names
+        const ALL_SLOTS = [
+            'checkout',
+            'create_bill',
+            'dirf',
+            'infinite_card',
+            'infinite_cash_can_request_limit',
+            'infinite_cash',
+            'instant_settlement',
+            'pay_bill',
+            'piselli',
+            'pix_credit',
+            'referral',
+            'supercobra',
+            'tap'
+        ];
+
+        // Generate category-specific slot names (category_slotname format)
+        function generateCategorySlots() {
+            const categories = {
+                'AI Images': [],
+                '3D Images': [],
+                'Real Footage': [],
+                'Mercadinho': [],
+                'Loja de Roupa': [],
+                'Sala Beleza/Barbearia': []
+            };
+            
+            Object.keys(categories).forEach(categoryName => {
+                const categoryKey = categoryName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z_]/g, '');
+                categories[categoryName] = ALL_SLOTS.map(slot => `${categoryKey}_${slot}`);
+            });
+            
+            return categories;
+        }
+
+        // Categories - each has ALL 13 slots for different asset types
+        const CATEGORIES = generateCategorySlots();
 
         // Category styling configuration
         const CATEGORY_CONFIG = {
@@ -870,8 +880,8 @@
             'Sala Beleza/Barbearia': { dotColor: '#dc3545', bgClass: 'mcc-beleza' }
         };
         
-        // All slot names (for compatibility)
-        const SLOT_NAMES = Object.values(CATEGORIES).flat();
+        // All slot names (includes all category-specific slots)
+        const SLOT_NAMES = Object.values(generateCategorySlots()).flat();
 
         class CloudWalkAssetManager {
             constructor() {
@@ -1015,7 +1025,8 @@
             }
 
             initializeSlots() {
-                SLOT_NAMES.forEach(slotName => {
+                // Initialize all category-specific slots
+                Object.values(CATEGORIES).flat().forEach(slotName => {
                     this.slots[slotName] = null;
                 });
                 this.renderCategories();
@@ -1106,6 +1117,9 @@
                 card.className = `slot-card ${slotData ? 'has-asset' : ''}`;
                 card.dataset.slot = slotName;
                 
+                // Extract display name (remove category prefix)
+                const displayName = slotName.includes('_') ? slotName.split('_').slice(1).join('_') : slotName;
+                
                 const isEmpty = !slotData;
                 const statusClass = isEmpty ? 'status-empty' : 'status-filled';
                 const statusText = isEmpty ? 'Empty' : 'Filled';
@@ -1142,7 +1156,7 @@
                 
                 card.innerHTML = `
                     <div class="slot-header">
-                        <div class="slot-name">${slotName.replace(/_/g, ' ')}</div>
+                        <div class="slot-name">${displayName.replace(/_/g, ' ')}</div>
                         <div class="slot-status ${statusClass}">${statusText}</div>
                     </div>
                     <div class="slot-content" ondrop="handleDrop(event, '${slotName}')" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
@@ -1161,8 +1175,8 @@
                     
                     if (error) throw error;
                     
-                    // Reset slots
-                    SLOT_NAMES.forEach(name => this.slots[name] = null);
+                    // Reset all category-specific slots
+                    Object.values(CATEGORIES).flat().forEach(name => this.slots[name] = null);
                     
                     // Populate with data
                     data.forEach(item => {
@@ -1312,8 +1326,10 @@
             }
 
             updateStats() {
-                const total = SLOT_NAMES.length;
-                const filled = Object.values(this.slots).filter(slot => slot !== null).length;
+                // Calculate total across all categories
+                const allCategorySlots = Object.values(CATEGORIES).flat();
+                const total = allCategorySlots.length;
+                const filled = allCategorySlots.filter(slotName => this.slots[slotName] !== null).length;
                 const empty = total - filled;
                 
                 const currentCategorySlots = CATEGORIES[this.currentCategory] || [];
