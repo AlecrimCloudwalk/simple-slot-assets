@@ -552,11 +552,16 @@
                 
                 let contentHtml = '';
                 if (slotData) {
+                    const isUploading = slotData.isLocal;
+                    const loadingIndicator = isUploading ? '<div style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.7);color:white;padding:2px 6px;border-radius:3px;font-size:0.7rem;">📤 Uploading...</div>' : '';
+                    const urlField = isUploading ? '<div class="slot-url" style="background:#fff3cd;color:#856404;">Upload in progress...</div>' : `<input type="text" class="slot-url" value="${slotData.public_url}" readonly onclick="this.select()">`;
+                    
                     contentHtml = `
+                        ${loadingIndicator}
                         <img src="${slotData.preview_url || slotData.public_url}" alt="${slotData.filename}" class="slot-preview">
                         <div class="slot-info">
                             <div class="slot-filename">${slotData.filename}</div>
-                            <input type="text" class="slot-url" value="${slotData.public_url}" readonly onclick="this.select()">
+                            ${urlField}
                         </div>
                         <div class="slot-actions">
                             <button class="btn btn-primary" onclick="replaceAsset('${slotName}')">📝 Replace</button>
@@ -626,6 +631,21 @@
 
             async processFileUpload(file, slotName) {
                 try {
+                    // Check file size (50MB Supabase limit)
+                    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+                    if (file.size > maxSize) {
+                        this.showError('File too large! Maximum size is 50MB.');
+                        return;
+                    }
+                    
+                    // Only allow images for now
+                    if (!file.type.startsWith('image/')) {
+                        this.showError('Please upload images only (JPG, PNG, etc.)');
+                        return;
+                    }
+                    
+                    // Show instant local preview while uploading
+                    this.showInstantPreview(file, slotName);
                     this.showSuccess('Uploading file...');
                     
                     // Upload file to Supabase Storage
@@ -657,12 +677,47 @@
                     
                     if (dbError) throw dbError;
                     
+                    // Update with hosted URL (replaces local preview)
+                    this.slots[slotName] = slotData;
+                    this.renderSlot(slotName);
+                    
                     this.showSuccess('Asset uploaded successfully!');
                     
                 } catch (error) {
                     console.error('Upload error:', error);
                     this.showError('Failed to upload asset');
+                    
+                    // Clear the local preview on error
+                    this.slots[slotName] = null;
+                    this.renderSlot(slotName);
                 }
+            }
+
+            showInstantPreview(file, slotName) {
+                // Create local preview immediately while upload happens
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const tempData = {
+                        filename: file.name,
+                        public_url: e.target.result, // Local data URL for instant preview
+                        isLocal: true // Flag to identify local previews
+                    };
+                    this.slots[slotName] = tempData;
+                    this.renderSlot(slotName);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            renderSlot(slotName) {
+                const slotData = this.slots[slotName];
+                const slotCard = document.querySelector(`[data-slot="${slotName}"]`);
+                
+                if (!slotCard) return;
+                
+                // Update the slot card content
+                const newCard = this.createSlotCard(slotName, slotData);
+                slotCard.replaceWith(newCard);
+                this.updateStats();
             }
 
             async removeAsset(slotName) {
