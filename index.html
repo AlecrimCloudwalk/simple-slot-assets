@@ -65,6 +65,45 @@
             border: 2px solid #667eea;
         }
 
+        .categories {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+            overflow-x: auto;
+        }
+
+        .category-tab {
+            padding: 12px 24px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 120px;
+        }
+
+        .category-tab.active {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .category-tab:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .category-content {
+            display: none;
+        }
+
+        .category-content.active {
+            display: block;
+        }
+
         .slots-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -141,8 +180,8 @@
         }
 
         .slot-preview {
-            max-width: 100%;
-            max-height: 150px;
+            width: 100%;
+            aspect-ratio: 1080/682;
             object-fit: cover;
             border-radius: 6px;
             margin-bottom: 10px;
@@ -349,7 +388,9 @@
         <div id="successMessage" class="success" style="display: none;"></div>
 
         <div id="mainContent" style="display: none;">
-            <div class="slots-grid" id="slotsGrid"></div>
+            <div class="categories" id="categories"></div>
+            
+            <div id="categoryContents"></div>
             
             <div class="controls">
                 <button class="btn btn-success" onclick="exportAll()">📥 Export All URLs</button>
@@ -369,28 +410,44 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvdW9sdnNmeHJ1cGF5em1tb21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MzIxMjAsImV4cCI6MjA3MjUwODEyMH0.QsIG3xo5rqOKoiTEbIuzf8_IutgEglJPUiOeFXJQUj4';
         const GITHUB_CLIENT_ID = 'Ov23lilV3kXkuTBByu9H';
         
-        // Slot names based on your video files
-        const SLOT_NAMES = [
-            'checkout',
-            'create_bill',
-            'dirf',
-            'infinite_card',
-            'infinite_cash_can_request_limit',
-            'infinite_cash',
-            'instant_settlement',
-            'pay_bill',
-            'piselli',
-            'pix_credit',
-            'referral',
-            'supercobra',
-            'tap'
-        ];
+        // Categories and their slots
+        const CATEGORIES = {
+            'AI Images': [
+                'piselli',
+                'supercobra',
+                'referral'
+            ],
+            '3D Images': [
+                'infinite_card',
+                'infinite_cash',
+                'pix_credit'
+            ],
+            'Real Footage': [
+                'checkout', 
+                'pay_bill',
+                'tap'
+            ],
+            'MCC - Mercadinho': [
+                'create_bill',
+                'instant_settlement'
+            ],
+            'MCC - Loja de Roupa': [
+                'dirf'
+            ],
+            'MCC - Sala Beleza/Barbearia': [
+                'infinite_cash_can_request_limit'
+            ]
+        };
+        
+        // All slot names (for compatibility)
+        const SLOT_NAMES = Object.values(CATEGORIES).flat();
 
         class CloudWalkAssetManager {
             constructor() {
                 this.supabase = null;
                 this.user = null;
                 this.slots = {};
+                this.currentCategory = Object.keys(CATEGORIES)[0]; // First category by default
                 this.init();
             }
 
@@ -525,18 +582,63 @@
                 SLOT_NAMES.forEach(slotName => {
                     this.slots[slotName] = null;
                 });
-                this.renderSlots();
+                this.renderCategories();
             }
 
-            renderSlots() {
-                const grid = document.getElementById('slotsGrid');
-                grid.innerHTML = '';
+            renderCategories() {
+                // Render category tabs
+                const categoriesDiv = document.getElementById('categories');
+                categoriesDiv.innerHTML = '';
                 
-                SLOT_NAMES.forEach(slotName => {
-                    const slotData = this.slots[slotName];
-                    const slotCard = this.createSlotCard(slotName, slotData);
-                    grid.appendChild(slotCard);
+                Object.keys(CATEGORIES).forEach((categoryName, index) => {
+                    const tab = document.createElement('button');
+                    tab.className = `category-tab ${index === 0 ? 'active' : ''}`;
+                    tab.textContent = categoryName;
+                    tab.dataset.category = categoryName;
+                    tab.onclick = () => this.switchCategory(categoryName);
+                    categoriesDiv.appendChild(tab);
                 });
+                
+                // Render category contents
+                const contentsDiv = document.getElementById('categoryContents');
+                contentsDiv.innerHTML = '';
+                
+                Object.keys(CATEGORIES).forEach((categoryName, index) => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.id = `category-${categoryName}`;
+                    categoryDiv.className = `category-content ${index === 0 ? 'active' : ''}`;
+                    
+                    const slotsGrid = document.createElement('div');
+                    slotsGrid.className = 'slots-grid';
+                    slotsGrid.id = `slots-${categoryName}`;
+                    
+                    CATEGORIES[categoryName].forEach(slotName => {
+                        const slotData = this.slots[slotName];
+                        const slotCard = this.createSlotCard(slotName, slotData);
+                        slotsGrid.appendChild(slotCard);
+                    });
+                    
+                    categoryDiv.appendChild(slotsGrid);
+                    contentsDiv.appendChild(categoryDiv);
+                });
+                
+                this.updateStats();
+            }
+
+            switchCategory(categoryName) {
+                this.currentCategory = categoryName;
+                
+                // Update tabs
+                document.querySelectorAll('.category-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelector(`[data-category="${categoryName}"]`).classList.add('active');
+                
+                // Update content
+                document.querySelectorAll('.category-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`category-${categoryName}`).classList.add('active');
                 
                 this.updateStats();
             }
@@ -609,7 +711,7 @@
                         this.slots[item.slot_name] = item;
                     });
                     
-                    this.renderSlots();
+                    this.renderCategories();
                     
                 } catch (error) {
                     console.error('Error loading slots:', error);
@@ -620,7 +722,7 @@
             async uploadAsset(slotName) {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = 'image/*';
+                input.accept = 'image/*,video/*';
                 input.onchange = async (e) => {
                     if (e.target.files[0]) {
                         await this.processFileUpload(e.target.files[0], slotName);
@@ -631,16 +733,19 @@
 
             async processFileUpload(file, slotName) {
                 try {
-                    // Check file size (50MB Supabase limit)
-                    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+                    // Check file size (different limits for images vs videos)
+                    const isVideo = file.type.startsWith('video/');
+                    const maxSize = isVideo ? 1 * 1024 * 1024 : 50 * 1024 * 1024; // 1MB for videos, 50MB for images
+                    const sizeLimit = isVideo ? '1MB' : '50MB';
+                    
                     if (file.size > maxSize) {
-                        this.showError('File too large! Maximum size is 50MB.');
+                        this.showError(`File too large! Maximum size for ${isVideo ? 'videos' : 'images'} is ${sizeLimit}.`);
                         return;
                     }
                     
-                    // Only allow images for now
-                    if (!file.type.startsWith('image/')) {
-                        this.showError('Please upload images only (JPG, PNG, etc.)');
+                    // Allow images and videos
+                    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+                        this.showError('Please upload images or videos only (JPG, PNG, MP4, etc.)');
                         return;
                     }
                     
@@ -694,18 +799,46 @@
             }
 
             showInstantPreview(file, slotName) {
-                // Create local preview immediately while upload happens
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const tempData = {
-                        filename: file.name,
-                        public_url: e.target.result, // Local data URL for instant preview
-                        isLocal: true // Flag to identify local previews
+                if (file.type.startsWith('image/')) {
+                    // Handle images with FileReader
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const tempData = {
+                            filename: file.name,
+                            public_url: e.target.result, // Local data URL for instant preview
+                            isLocal: true // Flag to identify local previews
+                        };
+                        this.slots[slotName] = tempData;
+                        this.renderSlot(slotName);
                     };
-                    this.slots[slotName] = tempData;
-                    this.renderSlot(slotName);
-                };
-                reader.readAsDataURL(file);
+                    reader.readAsDataURL(file);
+                } else if (file.type.startsWith('video/')) {
+                    // Handle videos by creating video thumbnail
+                    const video = document.createElement('video');
+                    const url = URL.createObjectURL(file);
+                    video.src = url;
+                    video.currentTime = 1; // Get frame at 1 second
+                    
+                    video.addEventListener('loadeddata', () => {
+                        const canvas = document.createElement('canvas');
+                        // Use 1080x682 aspect ratio (324x205 for thumbnail)
+                        canvas.width = 324;
+                        canvas.height = 205;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        const tempData = {
+                            filename: file.name,
+                            public_url: canvas.toDataURL(), // Video thumbnail as preview
+                            isLocal: true,
+                            isVideo: true // Flag to identify video files
+                        };
+                        this.slots[slotName] = tempData;
+                        this.renderSlot(slotName);
+                        
+                        URL.revokeObjectURL(url);
+                    });
+                }
             }
 
             renderSlot(slotName) {
@@ -718,6 +851,18 @@
                 const newCard = this.createSlotCard(slotName, slotData);
                 slotCard.replaceWith(newCard);
                 this.updateStats();
+            }
+
+            updateStats() {
+                const total = SLOT_NAMES.length;
+                const filled = Object.values(this.slots).filter(slot => slot !== null).length;
+                const empty = total - filled;
+                
+                const currentCategorySlots = CATEGORIES[this.currentCategory] || [];
+                const currentCategoryFilled = currentCategorySlots.filter(slotName => this.slots[slotName] !== null).length;
+                
+                document.getElementById('stats').textContent = 
+                    `Total slots: ${total} | Filled: ${filled} | Empty: ${empty} | Current category: ${currentCategoryFilled}/${currentCategorySlots.length} filled`;
             }
 
             async removeAsset(slotName) {
@@ -760,15 +905,6 @@
                         }
                     )
                     .subscribe();
-            }
-
-            updateStats() {
-                const total = SLOT_NAMES.length;
-                const filled = Object.values(this.slots).filter(slot => slot !== null).length;
-                const empty = total - filled;
-                
-                document.getElementById('stats').textContent = 
-                    `Total slots: ${total} | Filled: ${filled} | Empty: ${empty}`;
             }
 
             bindEvents() {
