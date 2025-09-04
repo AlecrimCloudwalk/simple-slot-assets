@@ -161,6 +161,7 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 12px;
             margin-bottom: 20px;
+            overflow: visible; /* Allow hover previews to extend outside grid */
         }
 
         .slot-card {
@@ -171,6 +172,7 @@
             transition: all 0.3s ease;
             position: relative;
             cursor: pointer;
+            overflow: visible; /* Allow hover preview to extend outside */
         }
 
         .slot-card:hover {
@@ -258,7 +260,11 @@
         }
 
         .slot-card:hover .slot-preview {
-            transform: scale(1.05);
+            transform: scale(1.8);
+            z-index: 100;
+            position: relative;
+            border-radius: 8px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
 
         .slot-preview[src] {
@@ -1247,6 +1253,11 @@
                     
                     this.renderCategories();
                     
+                    // Update phone preview after loading slots
+                    if (this.currentCategory) {
+                        this.updatePhonePreview(this.currentCategory);
+                    }
+                    
                 } catch (error) {
                     console.error('Error loading slots:', error);
                     this.showError('Failed to load slot data');
@@ -1326,6 +1337,9 @@
                     // Update with hosted URL (replaces local preview)
                     this.slots[slotName] = slotData;
                     this.renderSlot(slotName);
+                    
+                    // Update phone preview with new asset
+                    this.updatePhonePreview(this.currentCategory);
                     
                     this.showSuccess('Asset uploaded successfully!');
                     
@@ -1535,19 +1549,23 @@
                 if (assetsWithContent.length === 0) {
                     // Show placeholder
                     wrapper.innerHTML = '<div class="video-placeholder"><span>No assets in this category</span></div>';
-                    indicators.innerHTML = '<div class="indicator active"></div>';
+                    if (indicators) indicators.innerHTML = '<div class="indicator active"></div>';
                     this.updateCarouselControls();
                     return;
                 }
                 
                 // Render slides - each slide takes 100% width
                 wrapper.innerHTML = '';
+                console.log('Creating carousel slides for:', assetsWithContent);
+                
                 assetsWithContent.forEach((asset, index) => {
                     const slide = document.createElement('div');
                     slide.className = 'carousel-slide-container';
                     slide.style.width = '100%'; // Each slide takes full width
                     
-                    if (asset.public_url.includes('.mp4') || asset.isVideo) {
+                    console.log(`Creating slide ${index}:`, asset);
+                    
+                    if (asset.public_url && (asset.public_url.includes('.mp4') || asset.isVideo)) {
                         // Video slide
                         const video = document.createElement('video');
                         video.src = asset.public_url;
@@ -1555,15 +1573,27 @@
                         video.muted = true;
                         video.loop = true;
                         video.playsinline = true;
+                        video.style.width = '100%';
+                        video.style.height = '100%';
+                        video.style.objectFit = 'cover';
                         slide.appendChild(video);
-                    } else {
+                        console.log('Created video slide:', video.src);
+                    } else if (asset.public_url) {
                         // Image slide with performance optimizations
                         const img = document.createElement('img');
                         img.src = asset.public_url;
-                        img.alt = asset.filename;
-                        img.loading = 'lazy';
+                        img.alt = asset.filename || 'Asset';
+                        img.loading = 'eager'; // Changed to eager for carousel
                         img.decoding = 'async';
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
+                        img.onload = () => console.log('Image loaded:', img.src);
+                        img.onerror = () => console.error('Image failed to load:', img.src);
                         slide.appendChild(img);
+                        console.log('Created image slide:', img.src);
+                    } else {
+                        console.error('Asset has no public_url:', asset);
                     }
                     
                     wrapper.appendChild(slide);
@@ -1573,13 +1603,16 @@
                 this.currentCategoryAssets = assetsWithContent;
                 
                 // Render indicators
-                indicators.innerHTML = '';
-                this.currentCategoryAssets.forEach((_, index) => {
-                    const indicator = document.createElement('div');
-                    indicator.className = `indicator ${index === this.currentSlideIndex ? 'active' : ''}`;
-                    indicator.addEventListener('click', () => this.goToSlide(index));
-                    indicators.appendChild(indicator);
-                });
+                if (indicators) {
+                    indicators.innerHTML = '';
+                    assetsWithContent.forEach((_, index) => {
+                        const indicator = document.createElement('div');
+                        indicator.className = `indicator ${index === this.currentSlideIndex ? 'active' : ''}`;
+                        indicator.addEventListener('click', () => this.goToSlide(index));
+                        indicators.appendChild(indicator);
+                    });
+                    console.log(`Created ${assetsWithContent.length} indicators`);
+                }
                 
                 // Reset slide index if needed
                 if (this.currentSlideIndex >= this.currentCategoryAssets.length) {
