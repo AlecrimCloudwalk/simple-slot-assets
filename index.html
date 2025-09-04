@@ -78,34 +78,37 @@
 
         .categories {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
+            gap: 2px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #f0f0f0;
-            overflow-x: auto;
+            overflow: visible; /* Remove scrolling */
         }
 
         .category-tab {
-            padding: 12px 20px;
+            flex: 1; /* Equal width tabs */
+            padding: 8px 4px;
             background: #f8f9fa;
             border: none;
-            border-radius: 8px 8px 0 0;
+            border-radius: 6px 6px 0 0;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.75rem;
             font-weight: 500;
             transition: all 0.3s ease;
             white-space: nowrap;
-            min-width: 140px;
-            max-width: 180px;
             overflow: hidden;
             text-overflow: ellipsis;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            gap: 4px;
+            text-align: center;
+            min-height: 50px;
         }
 
         .category-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             flex-shrink: 0;
         }
@@ -190,7 +193,7 @@
 
         .slot-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             margin-bottom: 8px;
         }
@@ -203,27 +206,10 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            flex: 1;
+            text-align: center;
         }
 
-        .slot-status {
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 500;
-            margin-left: 6px;
-            min-width: fit-content;
-        }
-
-        .status-empty {
-            background: #ffeaa7;
-            color: #d63031;
-        }
-
-        .status-filled {
-            background: #55a3ff;
-            color: white;
-        }
+        /* Removed slot status indicators */
 
         .slot-content {
             min-height: 200px;
@@ -793,6 +779,18 @@
                 top: 0;
                 height: 100vh;
             }
+            
+            /* Responsive category tabs for mobile */
+            .category-tab {
+                font-size: 0.65rem;
+                padding: 6px 2px;
+                min-height: 40px;
+            }
+            
+            .category-dot {
+                width: 4px;
+                height: 4px;
+            }
         }
     </style>
 </head>
@@ -834,7 +832,7 @@
             </div>
             
             <div class="stats" id="stats">
-                Total slots: 0 | Filled: 0 | Empty: 0
+                Total slots: 0 | Assets uploaded: 0
             </div>
         </div>
 
@@ -1192,9 +1190,7 @@
                     slotName.split('_').pop().replace(/_/g, ' ') : 
                     slotName.replace(/_/g, ' ');
                 
-                const isEmpty = !slotData;
-                const statusClass = isEmpty ? 'status-empty' : 'status-filled';
-                const statusText = isEmpty ? 'Empty' : 'Filled';
+                // Removed status indicators
                 
                 let contentHtml = '';
                 if (slotData) {
@@ -1229,7 +1225,6 @@
                 card.innerHTML = `
                     <div class="slot-header">
                         <div class="slot-name">${displayName}</div>
-                        <div class="slot-status ${statusClass}">${statusText}</div>
                     </div>
                     <div class="slot-content" ondrop="handleDrop(event, '${slotName}')" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
                         ${contentHtml}
@@ -1434,14 +1429,13 @@
                 // Calculate total across all categories
                 const allCategorySlots = Object.values(CATEGORIES).flat();
                 const total = allCategorySlots.length;
-                const filled = allCategorySlots.filter(slotName => this.slots[slotName] !== null).length;
-                const empty = total - filled;
+                const uploaded = allCategorySlots.filter(slotName => this.slots[slotName] !== null).length;
                 
                 const currentCategorySlots = CATEGORIES[this.currentCategory] || [];
-                const currentCategoryFilled = currentCategorySlots.filter(slotName => this.slots[slotName] !== null).length;
+                const currentUploaded = currentCategorySlots.filter(slotName => this.slots[slotName] !== null).length;
                 
                 document.getElementById('stats').textContent = 
-                    `Total slots: ${total} | Filled: ${filled} | Empty: ${empty} | Current category: ${currentCategoryFilled}/${currentCategorySlots.length} filled`;
+                    `Total slots: ${total} | Assets uploaded: ${uploaded} | Current category: ${currentUploaded}/${currentCategorySlots.length}`;
             }
 
             async removeAsset(slotName) {
