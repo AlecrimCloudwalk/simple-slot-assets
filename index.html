@@ -405,23 +405,23 @@
             display: flex;
         }
 
-        /* PHONE PREVIEW PANEL: Right-sliding Phone Preview */
+        /* PHONE PREVIEW PANEL: Fixed Full-Height Phone Preview */
         .phone-panel {
             position: fixed !important;
-            top: 80px;
+            top: 0;
             right: 0;
             width: 480px;
-            height: calc(100vh - 80px);
+            height: 100vh;
             background: #fff;
             border-left: 1px solid #232427;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            padding: 20px;
+            gap: 0;
+            padding: 0;
             transform: translateX(100%);
             transition: transform 0.3s ease;
             z-index: 1003;
-            overflow-y: auto;
+            overflow: hidden;
             box-shadow: -2px 0 20px rgba(0, 0, 0, 0.5);
         }
 
@@ -429,19 +429,13 @@
             transform: translateX(0);
         }
 
-        .phone-panel-header {
+        .app-preview {
+            flex: 1;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            height: 100%;
+            justify-content: center;
             align-items: center;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 20px;
-        }
-
-        .phone-panel-header h2 {
-            margin: 0;
-            color: #333;
-            font-size: 18px;
         }
 
         .close-btn {
@@ -758,8 +752,8 @@
 
             .phone-panel {
                 width: 100%;
-                top: 60px;
-                height: calc(100vh - 60px);
+                top: 0;
+                height: 100vh;
             }
         }
     </style>
@@ -806,20 +800,9 @@
             </div>
         </div>
 
-        <!-- PHONE PREVIEW PANEL: Right-sliding Phone Preview -->
+        <!-- PHONE PREVIEW PANEL: Fixed Full-Height Phone Preview -->
         <section class="phone-panel" id="phone-preview-panel">
-            <div class="phone-panel-header">
-                <h2>📱 Asset Preview</h2>
-                <button id="close-phone-panel" class="close-btn">×</button>
-            </div>
-            
             <div class="app-preview">
-                <div class="preview-controls">
-                    <label class="preview-switch">
-                        <input type="radio" name="previewMode" value="carousel" id="previewCarousel" checked>
-                        <span>Carousel View</span>
-                    </label>
-                </div>
 
                 <div class="phone-mockup">
                     <!-- Background Video -->
@@ -832,9 +815,7 @@
                     <div class="video-overlay" id="videoOverlay">
                         <div class="video-component">
                             <div class="carousel-slides-wrapper" id="carouselSlidesWrapper">
-                                <div class="video-placeholder">
-                                    <span>Upload assets to see preview</span>
-                                </div>
+                                <!-- Carousel slides will be dynamically inserted here -->
                             </div>
                         </div>
                         <div class="video-controls">
@@ -1453,10 +1434,7 @@
                 // Open phone preview panel by default
                 this.openPhonePreview();
                 
-                // Bind phone preview events
-                document.getElementById('close-phone-panel').addEventListener('click', () => {
-                    this.closePhonePreview();
-                });
+                // Phone preview is always open - no close button
                 
                 document.getElementById('prev-slide').addEventListener('click', () => {
                     this.previousSlide();
@@ -1499,10 +1477,21 @@
                 const wrapper = document.getElementById('carouselSlidesWrapper');
                 const indicators = document.getElementById('carouselIndicators');
                 
+                if (!wrapper) {
+                    console.error('Carousel wrapper not found!');
+                    return;
+                }
+                
                 // Get assets that actually have content
                 const assetsWithContent = this.currentCategoryAssets
                     .map(slotName => this.slots[slotName])
                     .filter(asset => asset !== null);
+                
+                console.log('Rendering carousel:', {
+                    categoryAssets: this.currentCategoryAssets,
+                    assetsWithContent: assetsWithContent,
+                    currentCategory: this.currentCategory
+                });
                 
                 if (assetsWithContent.length === 0) {
                     // Show placeholder
