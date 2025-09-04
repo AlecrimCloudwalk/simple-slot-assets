@@ -533,6 +533,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            width: 100%; /* Each slide takes full width */
         }
 
         .carousel-slide-container img,
@@ -1117,8 +1118,8 @@
                 card.className = `slot-card ${slotData ? 'has-asset' : ''}`;
                 card.dataset.slot = slotName;
                 
-                // Extract display name (remove category prefix)
-                const displayName = slotName.includes('_') ? slotName.split('_').slice(1).join('_') : slotName;
+                // Extract display name (remove category prefix) 
+                const displayName = slotName.includes('_') ? slotName.split('_').slice(1).join(' ').replace(/_/g, ' ') : slotName;
                 
                 const isEmpty = !slotData;
                 const statusClass = isEmpty ? 'status-empty' : 'status-filled';
@@ -1156,7 +1157,7 @@
                 
                 card.innerHTML = `
                     <div class="slot-header">
-                        <div class="slot-name">${displayName.replace(/_/g, ' ')}</div>
+                        <div class="slot-name">${displayName}</div>
                         <div class="slot-status ${statusClass}">${statusText}</div>
                     </div>
                     <div class="slot-content" ondrop="handleDrop(event, '${slotName}')" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
@@ -1435,41 +1436,40 @@
                 const selectedCategory = categoryName || this.currentCategory;
                 const categorySlots = CATEGORIES[selectedCategory] || [];
                 
-                // Get assets for this category
-                this.currentCategoryAssets = categorySlots
-                    .map(slotName => this.slots[slotName])
-                    .filter(asset => asset !== null);
+                // Store slot names - renderCarousel will handle filtering
+                this.currentCategoryAssets = categorySlots;
+                this.currentSlideIndex = 0; // Reset to first slide
                 
                 // Update category title
                 document.getElementById('demo-category-title').textContent = selectedCategory;
                 
                 // Update carousel
                 this.renderCarousel();
-                
-                // Update controls
-                this.updateCarouselControls();
             }
 
             renderCarousel() {
                 const wrapper = document.getElementById('carouselSlidesWrapper');
                 const indicators = document.getElementById('carouselIndicators');
                 
-                if (this.currentCategoryAssets.length === 0) {
+                // Get assets that actually have content
+                const assetsWithContent = this.currentCategoryAssets
+                    .map(slotName => this.slots[slotName])
+                    .filter(asset => asset !== null);
+                
+                if (assetsWithContent.length === 0) {
                     // Show placeholder
                     wrapper.innerHTML = '<div class="video-placeholder"><span>No assets in this category</span></div>';
                     indicators.innerHTML = '<div class="indicator active"></div>';
+                    this.updateCarouselControls();
                     return;
                 }
                 
-                // Calculate slide width
-                const slideWidth = 100 / this.currentCategoryAssets.length;
-                
-                // Render slides
+                // Render slides - each slide takes 100% width
                 wrapper.innerHTML = '';
-                this.currentCategoryAssets.forEach((asset, index) => {
+                assetsWithContent.forEach((asset, index) => {
                     const slide = document.createElement('div');
                     slide.className = 'carousel-slide-container';
-                    slide.style.width = `${slideWidth}%`;
+                    slide.style.width = '100%'; // Each slide takes full width
                     
                     if (asset.public_url.includes('.mp4') || asset.isVideo) {
                         // Video slide
@@ -1491,6 +1491,9 @@
                     wrapper.appendChild(slide);
                 });
                 
+                // Update the assets array to only include content
+                this.currentCategoryAssets = assetsWithContent;
+                
                 // Render indicators
                 indicators.innerHTML = '';
                 this.currentCategoryAssets.forEach((_, index) => {
@@ -1500,23 +1503,55 @@
                     indicators.appendChild(indicator);
                 });
                 
+                // Reset slide index if needed
+                if (this.currentSlideIndex >= this.currentCategoryAssets.length) {
+                    this.currentSlideIndex = 0;
+                }
+                
                 // Set initial transform
-                this.goToSlide(0);
+                this.updateSlidePosition();
             }
 
             goToSlide(index) {
+                if (this.currentCategoryAssets.length === 0) return;
                 if (index < 0 || index >= this.currentCategoryAssets.length) return;
                 
                 this.currentSlideIndex = index;
+                this.updateSlidePosition();
+            }
+
+            updateSlidePosition() {
+                // Get assets with content for the carousel
+                const assetsWithContent = this.currentCategoryAssets
+                    .map(slotName => this.slots[slotName])
+                    .filter(asset => asset !== null);
+                
                 const wrapper = document.getElementById('carouselSlidesWrapper');
-                const transform = `translateX(-${index * (100 / this.currentCategoryAssets.length)}%)`;
-                wrapper.style.transform = transform;
+                if (wrapper && assetsWithContent.length > 0) {
+                    // Each slide is 100% width, so move by 100% * currentSlideIndex
+                    const translatePercent = this.currentSlideIndex * 100;
+                    wrapper.style.transform = `translateX(-${translatePercent}%)`;
+                }
                 
                 // Update indicators
-                document.querySelectorAll('#carouselIndicators .indicator').forEach((indicator, i) => {
-                    indicator.classList.toggle('active', i === index);
+                const indicators = document.querySelectorAll('#carouselIndicators .indicator');
+                indicators.forEach((indicator, index) => {
+                    indicator.classList.toggle('active', index === this.currentSlideIndex);
                 });
                 
+                // Update demo title with current item name
+                const currentAsset = assetsWithContent[this.currentSlideIndex];
+                const titleElement = document.getElementById('demo-category-title');
+                if (titleElement && currentAsset) {
+                    // Extract clean slot name from the current asset
+                    const slotName = this.currentCategoryAssets.find(name => this.slots[name] === currentAsset);
+                    const cleanName = slotName ? slotName.split('_').slice(1).join(' ').replace(/_/g, ' ') : this.currentCategory;
+                    titleElement.textContent = cleanName;
+                } else if (titleElement) {
+                    titleElement.textContent = this.currentCategory;
+                }
+                
+                // Update controls
                 this.updateCarouselControls();
             }
 
@@ -1533,12 +1568,18 @@
                 const nextBtn = document.getElementById('next-slide');
                 const indicator = document.getElementById('slide-indicator');
                 
-                const totalSlides = this.currentCategoryAssets.length;
+                // Count only assets with content for display
+                const assetsWithContent = this.currentCategoryAssets
+                    .map(slotName => this.slots[slotName])
+                    .filter(asset => asset !== null);
+                const totalSlides = assetsWithContent.length;
                 
-                prevBtn.disabled = this.currentSlideIndex === 0 || totalSlides === 0;
-                nextBtn.disabled = this.currentSlideIndex === totalSlides - 1 || totalSlides === 0;
-                
-                indicator.textContent = totalSlides === 0 ? '0/0' : `${this.currentSlideIndex + 1}/${totalSlides}`;
+                if (prevBtn && nextBtn && indicator) {
+                    prevBtn.disabled = this.currentSlideIndex === 0 || totalSlides === 0;
+                    nextBtn.disabled = this.currentSlideIndex === totalSlides - 1 || totalSlides === 0;
+                    
+                    indicator.textContent = totalSlides === 0 ? '0/0' : `${this.currentSlideIndex + 1}/${totalSlides}`;
+                }
             }
 
             bindEvents() {
