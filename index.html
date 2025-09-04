@@ -237,6 +237,24 @@
             object-fit: cover;
             border-radius: 6px;
             margin-bottom: 10px;
+            /* Performance optimizations */
+            will-change: auto;
+            backface-visibility: hidden;
+            /* Add loading placeholder */
+            background: #f0f0f0;
+            background-image: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        .slot-preview[src] {
+            animation: none;
+            background: none;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .slot-empty {
@@ -544,6 +562,27 @@
             object-fit: cover;
             object-position: center;
             display: block;
+            /* Performance optimizations */
+            will-change: transform;
+            backface-visibility: hidden;
+        }
+
+        .carousel-slide-container img {
+            /* Loading state for carousel images */
+            background: #444;
+            background-image: linear-gradient(90deg, #444 25%, #555 50%, #444 75%);
+            background-size: 200% 100%;
+            animation: carouselLoading 1.5s infinite;
+        }
+
+        .carousel-slide-container img[src] {
+            animation: none;
+            background: none;
+        }
+
+        @keyframes carouselLoading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .video-overlay .video-controls {
@@ -1118,8 +1157,10 @@
                 card.className = `slot-card ${slotData ? 'has-asset' : ''}`;
                 card.dataset.slot = slotName;
                 
-                // Extract display name (remove category prefix) 
-                const displayName = slotName.includes('_') ? slotName.split('_').slice(1).join(' ').replace(/_/g, ' ') : slotName;
+                // Extract clean asset name (last part after underscores)
+                const displayName = slotName.includes('_') ? 
+                    slotName.split('_').pop().replace(/_/g, ' ') : 
+                    slotName.replace(/_/g, ' ');
                 
                 const isEmpty = !slotData;
                 const statusClass = isEmpty ? 'status-empty' : 'status-filled';
@@ -1133,7 +1174,7 @@
                     
                     contentHtml = `
                         ${loadingIndicator}
-                        <img src="${slotData.preview_url || slotData.public_url}" alt="${slotData.filename}" class="slot-preview">
+                        <img src="${slotData.preview_url || slotData.public_url}" alt="${slotData.filename}" class="slot-preview" loading="lazy" decoding="async">
                         <div class="slot-info">
                             <div class="slot-filename">${slotData.filename}</div>
                             ${urlField}
@@ -1226,8 +1267,15 @@
                     this.showInstantPreview(file, slotName);
                     this.showSuccess('Uploading file...');
                     
-                    // Upload file to Supabase Storage
-                    const fileName = `${slotName}_${Date.now()}_${file.name}`;
+                    // Upload file to Supabase Storage with new naming convention
+                    // Extract category and slot from slotName (e.g., "ai_images_checkout" -> "ai_images", "checkout")
+                    const slotParts = slotName.split('_');
+                    const actualSlot = slotParts.pop(); // Last part (e.g., "checkout")
+                    const category = slotParts.join('_'); // Rest joined (e.g., "ai_images")
+                    const fileExtension = file.name.split('.').pop();
+                    const timestamp = Date.now().toString().slice(-8); // Last 8 digits for shorter timestamp
+                    const fileName = `${category}_${actualSlot}_${timestamp}.${fileExtension}`;
+                    
                     const { data: uploadData, error: uploadError } = await this.supabase.storage
                         .from('slot-assets')
                         .upload(fileName, file);
@@ -1481,10 +1529,12 @@
                         video.playsinline = true;
                         slide.appendChild(video);
                     } else {
-                        // Image slide
+                        // Image slide with performance optimizations
                         const img = document.createElement('img');
                         img.src = asset.public_url;
                         img.alt = asset.filename;
+                        img.loading = 'lazy';
+                        img.decoding = 'async';
                         slide.appendChild(img);
                     }
                     
@@ -1543,9 +1593,9 @@
                 const currentAsset = assetsWithContent[this.currentSlideIndex];
                 const titleElement = document.getElementById('demo-category-title');
                 if (titleElement && currentAsset) {
-                    // Extract clean slot name from the current asset
+                    // Extract clean slot name from the current asset (last part after underscores)
                     const slotName = this.currentCategoryAssets.find(name => this.slots[name] === currentAsset);
-                    const cleanName = slotName ? slotName.split('_').slice(1).join(' ').replace(/_/g, ' ') : this.currentCategory;
+                    const cleanName = slotName ? slotName.split('_').pop().replace(/_/g, ' ') : this.currentCategory;
                     titleElement.textContent = cleanName;
                 } else if (titleElement) {
                     titleElement.textContent = this.currentCategory;
