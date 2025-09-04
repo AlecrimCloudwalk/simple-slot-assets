@@ -811,6 +811,7 @@
                 <div id="userInfo" class="user-info" style="display: none;">
                     <img id="userAvatar" class="avatar" src="" alt="User">
                     <span id="userName"></span>
+                    <button class="btn btn-success" onclick="refreshData()" title="Refresh all asset data">🔄 Refresh</button>
                     <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
                 </div>
                 <button id="signInBtn" class="btn btn-primary" onclick="signIn()" style="display: none;">
@@ -830,7 +831,6 @@
             
             <div class="controls">
                 <button class="btn btn-success" onclick="exportAll()">📥 Export All URLs</button>
-                <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh Data</button>
             </div>
             
             <div class="stats" id="stats">
@@ -971,6 +971,10 @@
                             this.showUserInfo(session.user);
                             this.showMainContent();
                             this.loadSlots();
+                            // Auto-refresh after a short delay for better loading
+                            setTimeout(() => {
+                                this.loadSlots();
+                            }, 1000);
                         } else if (event === 'SIGNED_OUT') {
                             this.user = null;
                             this.showSignInButton();
@@ -1599,8 +1603,10 @@
                     wrapper.appendChild(slide);
                 });
                 
-                // Update the assets array to only include content
-                this.currentCategoryAssets = assetsWithContent;
+                // Keep original slot names for reference but update current display list
+                // this.currentCategoryAssets should stay as slot names, not assets
+                // Create a separate array for display
+                this.displayAssets = assetsWithContent;
                 
                 // Render indicators
                 if (indicators) {
@@ -1615,7 +1621,7 @@
                 }
                 
                 // Reset slide index if needed
-                if (this.currentSlideIndex >= this.currentCategoryAssets.length) {
+                if (this.currentSlideIndex >= assetsWithContent.length) {
                     this.currentSlideIndex = 0;
                 }
                 
@@ -1624,24 +1630,24 @@
             }
 
             goToSlide(index) {
-                if (this.currentCategoryAssets.length === 0) return;
-                if (index < 0 || index >= this.currentCategoryAssets.length) return;
+                const totalSlides = (this.displayAssets || []).length;
+                if (totalSlides === 0) return;
+                if (index < 0 || index >= totalSlides) return;
                 
                 this.currentSlideIndex = index;
                 this.updateSlidePosition();
             }
 
             updateSlidePosition() {
-                // Get assets with content for the carousel
-                const assetsWithContent = this.currentCategoryAssets
-                    .map(slotName => this.slots[slotName])
-                    .filter(asset => asset !== null);
+                // Use the displayAssets array created in renderCarousel
+                const assetsWithContent = this.displayAssets || [];
                 
                 const wrapper = document.getElementById('carouselSlidesWrapper');
                 if (wrapper && assetsWithContent.length > 0) {
                     // Each slide is 100% width, so move by 100% * currentSlideIndex
                     const translatePercent = this.currentSlideIndex * 100;
                     wrapper.style.transform = `translateX(-${translatePercent}%)`;
+                    console.log(`Moving carousel to slide ${this.currentSlideIndex}, translateX(-${translatePercent}%)`);
                 }
                 
                 // Update indicators
@@ -1671,13 +1677,9 @@
                 const currentCategorySlots = CATEGORIES[this.currentCategory] || [];
                 if (!currentCategorySlots.includes(slotName) || !this.slots[slotName]) return;
                 
-                // Find the index of this asset in the current category's assets with content
-                const assetsWithContent = this.currentCategoryAssets
-                    .map(name => this.slots[name])
-                    .filter(asset => asset !== null);
-                
+                // Find the index of this asset in the display assets
                 const targetAsset = this.slots[slotName];
-                const targetIndex = assetsWithContent.indexOf(targetAsset);
+                const targetIndex = (this.displayAssets || []).indexOf(targetAsset);
                 
                 if (targetIndex >= 0 && targetIndex !== this.currentSlideIndex) {
                     this.goToSlide(targetIndex);
@@ -1697,11 +1699,8 @@
                 const nextBtn = document.getElementById('next-slide');
                 const indicator = document.getElementById('slide-indicator');
                 
-                // Count only assets with content for display
-                const assetsWithContent = this.currentCategoryAssets
-                    .map(slotName => this.slots[slotName])
-                    .filter(asset => asset !== null);
-                const totalSlides = assetsWithContent.length;
+                // Use the displayAssets array
+                const totalSlides = (this.displayAssets || []).length;
                 
                 if (prevBtn && nextBtn && indicator) {
                     prevBtn.disabled = this.currentSlideIndex === 0 || totalSlides === 0;
