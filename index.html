@@ -224,8 +224,27 @@
         }
 
         .slot-content.drag-over {
-            border-color: #28a745;
-            background: #f0fff4;
+            border-color: #28a745 !important;
+            background: #f0fff4 !important;
+            transform: scale(1.02);
+            box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .slot-content.drag-over::before {
+            content: "Drop file here";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            z-index: 10;
+            pointer-events: none;
         }
 
         .slot-preview {
@@ -1279,8 +1298,8 @@
                 try {
                     // Check file size (different limits for images vs videos)
                     const isVideo = file.type.startsWith('video/');
-                    const maxSize = isVideo ? 1 * 1024 * 1024 : 50 * 1024 * 1024; // 1MB for videos, 50MB for images
-                    const sizeLimit = isVideo ? '1MB' : '50MB';
+                    const maxSize = isVideo ? 2 * 1024 * 1024 : 50 * 1024 * 1024; // 2MB for videos, 50MB for images
+                    const sizeLimit = isVideo ? '2MB' : '50MB';
                     
                     if (file.size > maxSize) {
                         this.showError(`File too large! Maximum size for ${isVideo ? 'videos' : 'images'} is ${sizeLimit}.`);
@@ -1714,7 +1733,10 @@
 
             handleGlobalDragEnter(e) {
                 e.preventDefault();
-                document.getElementById('dropOverlay').classList.add('active');
+                // Only show global overlay if not over a slot
+                if (!e.target.closest('.slot-content')) {
+                    document.getElementById('dropOverlay').classList.add('active');
+                }
             }
 
             handleGlobalDragOver(e) {
@@ -1722,7 +1744,10 @@
             }
 
             handleGlobalDragLeave(e) {
-                if (e.clientX === 0 && e.clientY === 0) {
+                // Check if leaving the window completely
+                if (e.clientX === 0 && e.clientY === 0 || 
+                    e.clientX >= window.innerWidth || 
+                    e.clientY >= window.innerHeight) {
                     document.getElementById('dropOverlay').classList.remove('active');
                 }
             }
@@ -1829,8 +1854,13 @@
             event.preventDefault();
             event.stopPropagation();
             
+            // Hide global drop overlay
+            document.getElementById('dropOverlay').classList.remove('active');
+            
             const slot = event.target.closest('.slot-content');
-            slot.classList.remove('drag-over');
+            if (slot) {
+                slot.classList.remove('drag-over');
+            }
             
             if (event.dataTransfer.files.length > 0) {
                 assetManager.processFileUpload(event.dataTransfer.files[0], slotName);
@@ -1839,15 +1869,29 @@
 
         function handleDragOver(event) {
             event.preventDefault();
+            event.stopPropagation();
+            // Hide global overlay when over slot
+            document.getElementById('dropOverlay').classList.remove('active');
         }
 
         function handleDragEnter(event) {
             event.preventDefault();
-            event.target.closest('.slot-content').classList.add('drag-over');
+            event.stopPropagation();
+            // Hide global overlay when entering slot
+            document.getElementById('dropOverlay').classList.remove('active');
+            
+            const slotContent = event.target.closest('.slot-content');
+            if (slotContent) {
+                slotContent.classList.add('drag-over');
+            }
         }
 
         function handleDragLeave(event) {
-            event.target.closest('.slot-content').classList.remove('drag-over');
+            event.preventDefault();
+            const slotContent = event.target.closest('.slot-content');
+            if (slotContent && !slotContent.contains(event.relatedTarget)) {
+                slotContent.classList.remove('drag-over');
+            }
         }
 
         function exportAll() {
