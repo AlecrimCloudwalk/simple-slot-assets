@@ -1292,7 +1292,6 @@
                     this.showInstantPreview(file, slotName);
                     this.showSuccess('Uploading file...');
                     
-                    // Upload file to Supabase Storage with new naming convention
                     // Extract category and slot from slotName (e.g., "ai_images_checkout" -> "ai_images", "checkout")
                     const slotParts = slotName.split('_');
                     const actualSlot = slotParts.pop(); // Last part (e.g., "checkout")
@@ -1301,6 +1300,14 @@
                     const timestamp = Date.now().toString().slice(-8); // Last 8 digits for shorter timestamp
                     const fileName = `${category}_${actualSlot}_${timestamp}.${fileExtension}`;
                     
+                    let previewUrl = null;
+                    
+                    // For videos, generate and upload thumbnail
+                    if (isVideo) {
+                        previewUrl = await this.generateAndUploadVideoThumbnail(file, `${category}_${actualSlot}_${timestamp}_thumb.jpg`);
+                    }
+                    
+                    // Upload main file to Supabase Storage
                     const { data: uploadData, error: uploadError } = await this.supabase.storage
                         .from('slot-assets')
                         .upload(fileName, file);
@@ -1317,6 +1324,7 @@
                         slot_name: slotName,
                         filename: file.name,
                         public_url: urlData.publicUrl,
+                        preview_url: previewUrl || urlData.publicUrl, // Use thumbnail for videos, main file for images
                         storage_path: fileName,
                         uploaded_by: this.user.email,
                         updated_at: new Date().toISOString()
@@ -1345,6 +1353,62 @@
                     this.slots[slotName] = null;
                     this.renderSlot(slotName);
                 }
+            }
+
+            async generateAndUploadVideoThumbnail(videoFile, thumbnailFileName) {
+                return new Promise((resolve, reject) => {
+                    const video = document.createElement('video');
+                    const url = URL.createObjectURL(videoFile);
+                    video.src = url;
+                    video.currentTime = 1; // Get frame at 1 second
+                    
+                    video.addEventListener('loadeddata', async () => {
+                        try {
+                            // Create canvas for thumbnail
+                            const canvas = document.createElement('canvas');
+                            canvas.width = 324;
+                            canvas.height = 205;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            
+                            // Convert canvas to blob
+                            canvas.toBlob(async (blob) => {
+                                try {
+                                    // Upload thumbnail to storage
+                                    const { data: thumbUploadData, error: thumbUploadError } = await this.supabase.storage
+                                        .from('slot-assets')
+                                        .upload(thumbnailFileName, blob, {
+                                            contentType: 'image/jpeg'
+                                        });
+                                    
+                                    if (thumbUploadError) throw thumbUploadError;
+                                    
+                                    // Get thumbnail public URL
+                                    const { data: thumbUrlData } = this.supabase.storage
+                                        .from('slot-assets')
+                                        .getPublicUrl(thumbnailFileName);
+                                    
+                                    URL.revokeObjectURL(url);
+                                    resolve(thumbUrlData.publicUrl);
+                                } catch (error) {
+                                    console.error('Thumbnail upload error:', error);
+                                    URL.revokeObjectURL(url);
+                                    resolve(null); // Don't fail the whole upload if thumbnail fails
+                                }
+                            }, 'image/jpeg', 0.8);
+                        } catch (error) {
+                            console.error('Thumbnail generation error:', error);
+                            URL.revokeObjectURL(url);
+                            resolve(null);
+                        }
+                    });
+                    
+                    video.addEventListener('error', () => {
+                        console.error('Video loading error for thumbnail generation');
+                        URL.revokeObjectURL(url);
+                        resolve(null);
+                    });
+                });
             }
 
             showInstantPreview(file, slotName) {
@@ -1440,10 +1504,22 @@
                     const slotData = this.slots[slotName];
                     
                     // Delete from storage
+                    const filesToDelete = [];
                     if (slotData && slotData.storage_path) {
+                        filesToDelete.push(slotData.storage_path);
+                        
+                        // Also delete thumbnail if it's a video
+                        if (slotData.preview_url && slotData.preview_url !== slotData.public_url) {
+                            // Extract thumbnail filename from preview URL
+                            const thumbnailPath = slotData.storage_path.replace(/\.[^.]+$/, '_thumb.jpg');
+                            filesToDelete.push(thumbnailPath);
+                        }
+                    }
+                    
+                    if (filesToDelete.length > 0) {
                         await this.supabase.storage
                             .from('slot-assets')
-                            .remove([slotData.storage_path]);
+                            .remove(filesToDelete);
                     }
                     
                     // Delete from database
