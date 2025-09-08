@@ -263,6 +263,12 @@
             animation: loading 1.5s infinite;
             transition: transform 0.3s ease;
         }
+        
+        /* Video specific styles */
+        video.slot-preview {
+            background: none;
+            animation: none;
+        }
 
         .slot-card:hover .slot-preview {
             transform: scale(1.8);
@@ -1190,12 +1196,17 @@
                 let contentHtml = '';
                 if (slotData) {
                     const isUploading = slotData.isLocal;
+                    const isVideo = slotData.public_url && (slotData.public_url.includes('.mp4') || slotData.public_url.includes('.webm') || slotData.public_url.includes('.mov'));
                     const loadingIndicator = isUploading ? '<div style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.7);color:white;padding:2px 6px;border-radius:3px;font-size:0.7rem;">📤 Uploading...</div>' : '';
                     const urlField = isUploading ? '<div class="slot-url" style="background:#fff3cd;color:#856404;">Upload in progress...</div>' : `<input type="text" class="slot-url" value="${slotData.public_url}" readonly onclick="copyToClipboard('${slotData.public_url}')" style="cursor:pointer" title="Click to copy URL">`;
                     
+                    const previewElement = isVideo ? 
+                        `<video src="${slotData.public_url}" class="slot-preview" muted loop autoplay playsinline loading="lazy"></video>` :
+                        `<img src="${slotData.public_url}" alt="${slotData.filename}" class="slot-preview" loading="lazy" decoding="async">`;
+                    
                     contentHtml = `
                         ${loadingIndicator}
-                        <img src="${slotData.preview_url || slotData.public_url}" alt="${slotData.filename}" class="slot-preview" loading="lazy" decoding="async">
+                        ${previewElement}
                         <div class="slot-info">
                             <div class="slot-filename">${slotData.filename}</div>
                             ${urlField}
@@ -1274,11 +1285,11 @@
                 try {
                     // Check file size (different limits for images vs videos)
                     const isVideo = file.type.startsWith('video/');
-                    const maxSize = isVideo ? 2 * 1024 * 1024 : 50 * 1024 * 1024; // 2MB for videos, 50MB for images
-                    const sizeLimit = isVideo ? '2MB' : '50MB';
+                    const maxSize = isVideo ? 50 * 1024 * 1024 : 50 * 1024 * 1024; // 50MB for both images and videos
+                    const sizeLimit = '50MB';
                     
                     if (file.size > maxSize) {
-                        this.showError(`File too large! Maximum size for ${isVideo ? 'videos' : 'images'} is ${sizeLimit}.`);
+                        this.showError(`File too large! Maximum size is ${sizeLimit}.`);
                         return;
                     }
                     
@@ -1300,14 +1311,7 @@
                     const timestamp = Date.now().toString().slice(-8); // Last 8 digits for shorter timestamp
                     const fileName = `${category}_${actualSlot}_${timestamp}.${fileExtension}`;
                     
-                    let previewUrl = null;
-                    
-                    // For videos, generate and upload thumbnail
-                    if (isVideo) {
-                        previewUrl = await this.generateAndUploadVideoThumbnail(file, `${category}_${actualSlot}_${timestamp}_thumb.jpg`);
-                    }
-                    
-                    // Upload main file to Supabase Storage
+                    // Upload file to Supabase Storage
                     const { data: uploadData, error: uploadError } = await this.supabase.storage
                         .from('slot-assets')
                         .upload(fileName, file);
@@ -1324,7 +1328,6 @@
                         slot_name: slotName,
                         filename: file.name,
                         public_url: urlData.publicUrl,
-                        preview_url: previewUrl || urlData.publicUrl, // Use thumbnail for videos, main file for images
                         storage_path: fileName,
                         uploaded_by: this.user.email,
                         updated_at: new Date().toISOString()
@@ -1355,107 +1358,21 @@
                 }
             }
 
-            async generateAndUploadVideoThumbnail(videoFile, thumbnailFileName) {
-                return new Promise((resolve, reject) => {
-                    const video = document.createElement('video');
-                    const url = URL.createObjectURL(videoFile);
-                    video.src = url;
-                    video.currentTime = 1; // Get frame at 1 second
-                    
-                    video.addEventListener('loadeddata', async () => {
-                        try {
-                            // Create canvas for thumbnail
-                            const canvas = document.createElement('canvas');
-                            canvas.width = 324;
-                            canvas.height = 205;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            
-                            // Convert canvas to blob
-                            canvas.toBlob(async (blob) => {
-                                try {
-                                    // Upload thumbnail to storage
-                                    const { data: thumbUploadData, error: thumbUploadError } = await this.supabase.storage
-                                        .from('slot-assets')
-                                        .upload(thumbnailFileName, blob, {
-                                            contentType: 'image/jpeg'
-                                        });
-                                    
-                                    if (thumbUploadError) throw thumbUploadError;
-                                    
-                                    // Get thumbnail public URL
-                                    const { data: thumbUrlData } = this.supabase.storage
-                                        .from('slot-assets')
-                                        .getPublicUrl(thumbnailFileName);
-                                    
-                                    URL.revokeObjectURL(url);
-                                    resolve(thumbUrlData.publicUrl);
-                                } catch (error) {
-                                    console.error('Thumbnail upload error:', error);
-                                    URL.revokeObjectURL(url);
-                                    resolve(null); // Don't fail the whole upload if thumbnail fails
-                                }
-                            }, 'image/jpeg', 0.8);
-                        } catch (error) {
-                            console.error('Thumbnail generation error:', error);
-                            URL.revokeObjectURL(url);
-                            resolve(null);
-                        }
-                    });
-                    
-                    video.addEventListener('error', () => {
-                        console.error('Video loading error for thumbnail generation');
-                        URL.revokeObjectURL(url);
-                        resolve(null);
-                    });
-                });
-            }
 
             showInstantPreview(file, slotName) {
-                if (file.type.startsWith('image/')) {
-                    // Handle images with FileReader
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const tempData = {
-                            filename: file.name,
-                            public_url: e.target.result, // Local data URL for instant preview
-                            isLocal: true // Flag to identify local previews
-                        };
-                        this.slots[slotName] = tempData;
-                        this.renderSlot(slotName);
-                        // Also update phone preview immediately
-                        this.updatePhonePreviewInstant(slotName, e.target.result, file.name);
-                    };
-                    reader.readAsDataURL(file);
-                } else if (file.type.startsWith('video/')) {
-                    // Handle videos by creating video thumbnail
-                    const video = document.createElement('video');
-                    const url = URL.createObjectURL(file);
-                    video.src = url;
-                    video.currentTime = 1; // Get frame at 1 second
-                    
-                    video.addEventListener('loadeddata', () => {
-                        const canvas = document.createElement('canvas');
-                        // Use 1080x682 aspect ratio (324x205 for thumbnail)
-                        canvas.width = 324;
-                        canvas.height = 205;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        
-                        const tempData = {
-                            filename: file.name,
-                            public_url: canvas.toDataURL(), // Video thumbnail as preview
-                            isLocal: true,
-                            isVideo: true // Flag to identify video files
-                        };
-                        this.slots[slotName] = tempData;
-                        this.renderSlot(slotName);
-                        // Also update phone preview immediately  
-                        this.updatePhonePreviewInstant(slotName, canvas.toDataURL(), file.name);
-                        
-                        URL.revokeObjectURL(url);
-                    });
-                }
+                // Create object URL for both images and videos
+                const localUrl = URL.createObjectURL(file);
+                
+                const tempData = {
+                    filename: file.name,
+                    public_url: localUrl, // Local URL for instant preview
+                    isLocal: true // Flag to identify local previews
+                };
+                
+                this.slots[slotName] = tempData;
+                this.renderSlot(slotName);
+                // Also update phone preview immediately
+                this.updatePhonePreviewInstant(slotName, localUrl, file.name);
             }
 
             updatePhonePreviewInstant(slotName, previewUrl, filename) {
@@ -1504,22 +1421,10 @@
                     const slotData = this.slots[slotName];
                     
                     // Delete from storage
-                    const filesToDelete = [];
                     if (slotData && slotData.storage_path) {
-                        filesToDelete.push(slotData.storage_path);
-                        
-                        // Also delete thumbnail if it's a video
-                        if (slotData.preview_url && slotData.preview_url !== slotData.public_url) {
-                            // Extract thumbnail filename from preview URL
-                            const thumbnailPath = slotData.storage_path.replace(/\.[^.]+$/, '_thumb.jpg');
-                            filesToDelete.push(thumbnailPath);
-                        }
-                    }
-                    
-                    if (filesToDelete.length > 0) {
                         await this.supabase.storage
                             .from('slot-assets')
-                            .remove(filesToDelete);
+                            .remove([slotData.storage_path]);
                     }
                     
                     // Delete from database
