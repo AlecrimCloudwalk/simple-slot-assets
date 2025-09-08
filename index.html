@@ -1254,26 +1254,114 @@
                 try {
                     console.log('Loading categories and slots from database...');
                     
-                    // Try to load from new dynamic structure first
-                    const { data: viewData, error: viewError } = await this.supabase
+                    // Add timeout to prevent infinite hanging
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Database query timeout')), 10000); // 10 second timeout
+                    });
+                    
+                    // Try to load from new dynamic structure first with timeout
+                    const queryPromise = this.supabase
                         .from('v_category_structure')
                         .select('*')
                         .order('category_sort_order', { ascending: true })
                         .order('slot_sort_order', { ascending: true });
+                    
+                    const { data: viewData, error: viewError } = await Promise.race([queryPromise, timeoutPromise]);
+                    
+                    if (viewError) {
+                        console.log('View query error:', viewError);
+                        throw viewError;
+                    }
                     
                     if (viewData && viewData.length > 0) {
                         // New database structure exists - use it
                         console.log('Using new dynamic category structure');
                         this.processDynamicCategories(viewData);
                     } else {
-                        // Fallback to hardcoded categories (old structure)
-                        console.log('Fallback to hardcoded categories - database not migrated yet');
-                        this.useHardcodedCategories();
+                        console.log('View returned empty data, trying direct table queries...');
+                        
+                        // Try direct table query as fallback
+                        const { data: categoriesData, error: categoriesError } = await Promise.race([
+                            this.supabase.from('categories').select('*').order('sort_order'),
+                            timeoutPromise
+                        ]);
+                        
+                        if (categoriesData && categoriesData.length > 0) {
+                            console.log('Direct categories table query successful');
+                            await this.loadFromDirectTables();
+                        } else {
+                            console.log('No categories found, falling back to hardcoded categories');
+                            this.useHardcodedCategories();
+                        }
                     }
                     
                 } catch (error) {
                     console.error('Error loading dynamic categories, falling back to hardcoded:', error);
+                    this.showError('Database connection issue, using offline mode');
                     // Use hardcoded categories as fallback
+                    this.useHardcodedCategories();
+                }
+            }
+
+            async loadFromDirectTables() {
+                try {
+                    console.log('Loading from direct table queries...');
+                    
+                    // Load categories directly
+                    const { data: categoriesData, error: categoriesError } = await this.supabase
+                        .from('categories')
+                        .select('*')
+                        .order('sort_order', { ascending: true });
+                    
+                    if (categoriesError) throw categoriesError;
+                    
+                    // Load category slots directly
+                    const { data: slotsData, error: slotsError } = await this.supabase
+                        .from('category_slots')
+                        .select('*')
+                        .order('sort_order', { ascending: true });
+                    
+                    if (slotsError) throw slotsError;
+                    
+                    console.log('Direct queries successful:', {
+                        categories: categoriesData.length,
+                        slots: slotsData.length
+                    });
+                    
+                    // Process the data manually
+                    this.categories = [];
+                    this.categorySlots = {};
+                    CATEGORIES = {};
+                    
+                    categoriesData.forEach(category => {
+                        const categorySlots = slotsData.filter(slot => slot.category_id === category.id);
+                        
+                        const categoryInfo = {
+                            id: category.id,
+                            name: category.name,
+                            display_name: category.display_name,
+                            color: category.color,
+                            bg_class: category.bg_class,
+                            sort_order: category.sort_order,
+                            slots: categorySlots.map(slot => ({
+                                id: slot.id,
+                                slot_name: slot.slot_name,
+                                display_name: slot.display_name,
+                                sort_order: slot.sort_order
+                            }))
+                        };
+                        
+                        this.categories.push(categoryInfo);
+                        this.categorySlots[category.id] = categoryInfo.slots;
+                        CATEGORIES[category.display_name] = categoryInfo.slots.map(slot => 
+                            `${category.name}_${slot.slot_name}`
+                        );
+                    });
+                    
+                    console.log('Direct table processing complete:', this.categories);
+                    
+                } catch (error) {
+                    console.error('Direct table queries failed:', error);
                     this.useHardcodedCategories();
                 }
             }
