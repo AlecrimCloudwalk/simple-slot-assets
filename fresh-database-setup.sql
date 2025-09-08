@@ -125,7 +125,12 @@ CREATE POLICY "CloudWalk users can delete slot assets" ON slot_assets
     FOR DELETE TO authenticated
     USING (auth.jwt() ->> 'email' LIKE '%@cloudwalk.io');
 
--- STEP 7: Create storage policies
+-- STEP 7: Create storage policies (drop existing ones first to avoid conflicts)
+DROP POLICY IF EXISTS "CloudWalk users can upload slot assets" ON storage.objects;
+DROP POLICY IF EXISTS "CloudWalk users can view slot assets" ON storage.objects;
+DROP POLICY IF EXISTS "CloudWalk users can delete slot assets" ON storage.objects;
+DROP POLICY IF EXISTS "Public can view slot assets" ON storage.objects;
+
 CREATE POLICY "CloudWalk users can upload slot assets" ON storage.objects
     FOR INSERT TO authenticated
     WITH CHECK (
