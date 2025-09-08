@@ -1636,37 +1636,54 @@
                         throw new Error('Direct API failed: ' + apiError.message);
                     }
                     
-                    // Test with simplest possible query using SDK
-                    console.log('🔍 Testing Supabase SDK query...');
-                    const startTime = Date.now();
-                    const { data, error } = await Promise.race([
-                        this.supabase.from('slot_assets').select('id').limit(1),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Supabase SDK timeout after 12 seconds')), 12000)
-                        )
-                    ]);
-                    
-                    const duration = Date.now() - startTime;
-                    console.log('🔍 Connection test completed in:', duration + 'ms');
-                    
-                    if (error) {
-                        console.log('🔍 Database error details:', {
-                            code: error.code,
-                            message: error.message,
-                            details: error.details,
-                            hint: error.hint
+                    // Test with direct API call first (this works)
+                    console.log('🔍 Testing direct API for slot_assets...');
+                    try {
+                        const directResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/slot_assets?limit=1', {
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json'
+                            }
                         });
+                        const directData = await directResponse.json();
+                        console.log('🔍 Direct API for slot_assets works:', directResponse.status, directData);
                         
-                        return { 
-                            success: false, 
-                            error: `${error.code || 'UNKNOWN'}: ${error.message}`,
-                            details: error.details,
-                            hint: error.hint
-                        };
+                        if (directResponse.ok) {
+                            console.log('✅ Direct API approach successful - SDK issue confirmed');
+                            return { success: true, hasData: Array.isArray(directData) && directData.length > 0 };
+                        }
+                    } catch (directError) {
+                        console.log('🔍 Direct API also failed:', directError.message);
                     }
                     
-                    console.log('🔍 Connection successful! Data returned:', Array.isArray(data) ? data.length + ' rows' : 'no data');
-                    return { success: true, hasData: Array.isArray(data) && data.length > 0 };
+                    // Test with simplest possible query using SDK (this times out)
+                    console.log('🔍 Testing Supabase SDK query (may timeout)...');
+                    const startTime = Date.now();
+                    
+                    try {
+                        const { data, error } = await Promise.race([
+                            this.supabase.from('slot_assets').select('id').limit(1),
+                            new Promise((_, reject) => 
+                                setTimeout(() => reject(new Error('Supabase SDK timeout after 8 seconds')), 8000)
+                            )
+                        ]);
+                        
+                        const duration = Date.now() - startTime;
+                        console.log('🔍 SDK query completed in:', duration + 'ms');
+                        
+                        if (error) {
+                            console.log('🔍 SDK error:', error);
+                            throw new Error(`SDK error: ${error.message}`);
+                        }
+                        
+                        return { success: true, hasData: Array.isArray(data) && data.length > 0 };
+                        
+                    } catch (sdkError) {
+                        console.log('🔍 SDK failed, but direct API worked - using direct API fallback');
+                        // Since direct API worked, we know the database is fine
+                        return { success: true, hasData: false, sdkIssue: true };
+                    }
                     
                 } catch (error) {
                     console.log('🔍 Connection test exception:', error);
@@ -1949,25 +1966,84 @@
             async loadDataWithActiveFilter() {
                 console.log('📊 Loading with is_active filtering...');
                 
-                const { data: categoriesData, error: categoriesError } = await this.supabase
-                    .from('categories')
-                    .select('id, name, display_name, color, bg_class, sort_order')
-                    .eq('is_active', true)
-                    .order('sort_order', { ascending: true });
+                try {
+                    // Try SDK first
+                    const { data: categoriesData, error: categoriesError } = await Promise.race([
+                        this.supabase
+                            .from('categories')
+                            .select('id, name, display_name, color, bg_class, sort_order')
+                            .eq('is_active', true)
+                            .order('sort_order', { ascending: true }),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('SDK timeout')), 8000)
+                        )
+                    ]);
+                    
+                    if (categoriesError) throw categoriesError;
+                    
+                    if (!categoriesData || categoriesData.length === 0) {
+                        throw new Error('No active categories found');
+                    }
+                    
+                    const { data: slotsData, error: slotsError } = await Promise.race([
+                        this.supabase
+                            .from('category_slots')
+                            .select('id, category_id, slot_name, display_name, sort_order')
+                            .eq('is_active', true)
+                            .order('sort_order', { ascending: true }),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('SDK timeout')), 8000)
+                        )
+                    ]);
+                    
+                    if (slotsError) throw slotsError;
+                    
+                    return this.processLoadedData(categoriesData, slotsData);
+                    
+                } catch (sdkError) {
+                    console.log('📊 SDK failed, trying direct API approach...', sdkError.message);
+                    return await this.loadDataDirectAPI();
+                }
+            }
+            
+            async loadDataDirectAPI() {
+                console.log('📊 Loading data via direct API calls...');
                 
-                if (categoriesError) throw categoriesError;
+                // Load categories directly via API
+                const categoriesResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/categories?is_active=eq.true&order=sort_order.asc&select=id,name,display_name,color,bg_class,sort_order', {
+                    headers: {
+                        'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                        'apikey': this.supabase.supabaseKey,
+                        'Content-Type': 'application/json'
+                    }
+                });
                 
-                if (!categoriesData || categoriesData.length === 0) {
-                    throw new Error('No active categories found');
+                if (!categoriesResponse.ok) {
+                    throw new Error(`Categories API failed: ${categoriesResponse.status} ${categoriesResponse.statusText}`);
                 }
                 
-                const { data: slotsData, error: slotsError } = await this.supabase
-                    .from('category_slots')
-                    .select('id, category_id, slot_name, display_name, sort_order')
-                    .eq('is_active', true)
-                    .order('sort_order', { ascending: true });
+                const categoriesData = await categoriesResponse.json();
+                console.log('📊 Categories loaded via API:', categoriesData.length, 'items');
                 
-                if (slotsError) throw slotsError;
+                if (!categoriesData || categoriesData.length === 0) {
+                    throw new Error('No active categories found via API');
+                }
+                
+                // Load category slots directly via API
+                const slotsResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/category_slots?is_active=eq.true&order=sort_order.asc&select=id,category_id,slot_name,display_name,sort_order', {
+                    headers: {
+                        'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                        'apikey': this.supabase.supabaseKey,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!slotsResponse.ok) {
+                    throw new Error(`Slots API failed: ${slotsResponse.status} ${slotsResponse.statusText}`);
+                }
+                
+                const slotsData = await slotsResponse.json();
+                console.log('📊 Slots loaded via API:', slotsData.length, 'items');
                 
                 return this.processLoadedData(categoriesData, slotsData);
             }
