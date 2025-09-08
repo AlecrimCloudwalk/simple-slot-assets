@@ -689,11 +689,13 @@
         .carousel-indicators {
             position: absolute;
             bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 16px;
+            right: 16px;
             display: flex;
+            justify-content: flex-start;
             gap: 6px;
             z-index: 60;
+            /* Match content-overlay horizontal padding */
         }
 
         .carousel-indicators .indicator {
@@ -730,36 +732,198 @@
 
         .carousel-controls {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
+            gap: 16px;
+            margin-top: 20px;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
         }
 
         .carousel-controls .btn {
-            padding: 6px 12px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            min-width: 100px;
         }
 
         .carousel-controls .btn:disabled {
-            opacity: 0.5;
+            background: #e9ecef;
+            color: #6c757d;
             cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
         }
 
         .carousel-controls .btn:not(:disabled):hover {
-            background: #f5f5f5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4c93 100%);
         }
 
+        .carousel-controls .btn:not(:disabled):active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .carousel-controls #slide-indicator {
+            padding: 8px 16px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 0;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .modal-close:hover {
+            background: #ddd;
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 20px;
+            border-top: 1px solid #eee;
+            background: #f8f9fa;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* Add category/slot button styles */
+        .add-category-btn:hover {
+            border-color: #667eea !important;
+            background: #f0f4ff !important;
+            transform: scale(1.02);
+        }
+
+        .add-slot-card:hover {
+            border-color: #667eea !important;
+            background: #f0f4ff !important;
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        /* Utility classes */
         .mb-2 { margin-bottom: 0.5rem; }
         .mt-2 { margin-top: 0.5rem; }
         .mx-2 { margin-left: 0.5rem; margin-right: 0.5rem; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .btn-sm { padding: 4px 8px; font-size: 12px; }
 
         @media (max-width: 768px) {
             .container {
@@ -805,6 +969,25 @@
             .category-dot {
                 width: 4px;
                 height: 4px;
+            }
+            
+            /* Responsive carousel controls */
+            .carousel-controls {
+                padding: 12px 16px;
+                gap: 12px;
+                margin-top: 15px;
+            }
+            
+            .carousel-controls .btn {
+                padding: 8px 12px;
+                font-size: 12px;
+                min-width: 80px;
+            }
+            
+            .carousel-controls #slide-indicator {
+                padding: 6px 12px;
+                font-size: 12px;
+                min-width: 50px;
             }
         }
     </style>
@@ -872,7 +1055,7 @@
                                 <div class="text-overlay">
                                     <p id="demo-category-title">Select Category</p>
                                 </div>
-                                <button class="cta-button">View Assets</button>
+                                <button class="cta-button">Saiba mais</button>
                             </div>
                         </div>
                         <div class="carousel-indicators" id="carouselIndicators">
@@ -887,10 +1070,14 @@
                 </div>
                 
                 <!-- Carousel Controls -->
-                <div class="carousel-controls mt-2">
-                    <button id="prev-slide" class="btn btn-secondary btn-sm" disabled>‹ Previous</button>
-                    <span id="slide-indicator" class="mx-2">0/0</span>
-                    <button id="next-slide" class="btn btn-secondary btn-sm" disabled>Next ›</button>
+                <div class="carousel-controls">
+                    <button id="prev-slide" class="btn" disabled>
+                        <span>⭠</span>&nbsp;Previous
+                    </button>
+                    <span id="slide-indicator">0/0</span>
+                    <button id="next-slide" class="btn" disabled>
+                        Next&nbsp;<span>⭢</span>
+                    </button>
                 </div>
             </div>
         </section>
@@ -920,45 +1107,19 @@
             'tap'
         ];
 
-        // Generate category-specific slot names (category_slotname format)
-        function generateCategorySlots() {
-            const categories = {
-                'AI Images': [],
-                '3D Images': [],
-                'Real Footage': [],
-                'Mercadinho': [],
-                'Loja de Roupa': [],
-                'Sala Beleza/Barbearia': []
-            };
-            
-            Object.keys(categories).forEach(categoryName => {
-                const categoryKey = categoryName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z_]/g, '');
-                categories[categoryName] = ALL_SLOTS.map(slot => `${categoryKey}_${slot}`);
-            });
-            
-            return categories;
-        }
-
-        // Categories - each has ALL 13 slots for different asset types
-        const CATEGORIES = generateCategorySlots();
-
-        // Category styling configuration
-        const CATEGORY_CONFIG = {
-            'Mercadinho': { dotColor: '#28a745', bgClass: 'mcc-mercadinho' },
-            'Loja de Roupa': { dotColor: '#ffc107', bgClass: 'mcc-roupa' },
-            'Sala Beleza/Barbearia': { dotColor: '#dc3545', bgClass: 'mcc-beleza' }
-        };
-        
-        // All slot names (includes all category-specific slots)
-        const SLOT_NAMES = Object.values(generateCategorySlots()).flat();
+        // Dynamic categories and slots will be loaded from database
+        let CATEGORIES = {}; // Will be populated from database
+        let CATEGORY_SLOTS = {}; // Will store category_id -> slots mapping
+        let ALL_CATEGORY_DATA = []; // Will store full category data from database
 
         class CloudWalkAssetManager {
             constructor() {
                 this.supabase = null;
                 this.user = null;
                 this.slots = {};
-                // Try to restore last selected category from localStorage, fallback to first category
-                this.currentCategory = localStorage.getItem('cloudwalk-current-category') || Object.keys(CATEGORIES)[0];
+                this.categories = [];
+                this.categorySlots = {};
+                this.currentCategory = null; // Will be set after categories are loaded
                 this.currentSlideIndex = 0;
                 this.currentCategoryAssets = [];
                 this.carouselRenderTimeout = null; // Add throttling for carousel renders
@@ -976,16 +1137,23 @@
                     this.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     
                     // Set up auth state listener
-                    this.supabase.auth.onAuthStateChange((event, session) => {
+                    this.supabase.auth.onAuthStateChange(async (event, session) => {
                         console.log('Auth state changed:', event, session?.user?.email);
                         if (event === 'SIGNED_IN' && session?.user) {
                             this.user = session.user;
                             this.showUserInfo(session.user);
                             this.showMainContent();
-                            this.loadSlots();
+                            
+                            // Load categories and slots, then load assets
+                            await this.loadCategoriesAndSlots();
+                            await this.loadSlots();
+                            
+                            // Set current category after loading
+                            this.setDefaultCurrentCategory();
+                            
                             // Auto-refresh after a short delay for better loading
-                            setTimeout(() => {
-                                this.loadSlots();
+                            setTimeout(async () => {
+                                await this.loadSlots();
                             }, 1000);
                         } else if (event === 'SIGNED_OUT') {
                             this.user = null;
@@ -996,9 +1164,6 @@
                     
                     // Check authentication
                     await this.checkAuth();
-                    
-                    // Initialize slots
-                    this.initializeSlots();
                     
                     // Set up real-time subscriptions
                     this.setupRealtimeSubscription();
@@ -1035,7 +1200,13 @@
                     this.user = user;
                     this.showUserInfo(user);
                     this.showMainContent();
+                    
+                    // Load categories and slots, then load assets
+                    await this.loadCategoriesAndSlots();
                     await this.loadSlots();
+                    
+                    // Set current category after loading
+                    this.setDefaultCurrentCategory();
                 } else {
                     this.showSignInButton();
                 }
@@ -1061,6 +1232,104 @@
 
             hideAuthLoading() {
                 document.getElementById('authLoading').style.display = 'none';
+            }
+
+            async loadCategoriesAndSlots() {
+                try {
+                    console.log('Loading categories and slots from database...');
+                    
+                    // Load categories with their slots using the view
+                    const { data: categoryData, error: categoryError } = await this.supabase
+                        .from('v_category_structure')
+                        .select('*')
+                        .order('category_sort_order', { ascending: true })
+                        .order('slot_sort_order', { ascending: true });
+                    
+                    if (categoryError) throw categoryError;
+                    
+                    console.log('Raw category data:', categoryData);
+                    
+                    // Reset data structures
+                    this.categories = [];
+                    this.categorySlots = {};
+                    CATEGORIES = {};
+                    ALL_CATEGORY_DATA = [];
+                    
+                    // Group data by category
+                    const categoryMap = new Map();
+                    
+                    categoryData.forEach(row => {
+                        const categoryId = row.category_id;
+                        const categoryName = row.category_display_name;
+                        
+                        // Initialize category if not exists
+                        if (!categoryMap.has(categoryId)) {
+                            const categoryInfo = {
+                                id: categoryId,
+                                name: row.category_name,
+                                display_name: categoryName,
+                                color: row.category_color,
+                                bg_class: row.category_bg_class,
+                                sort_order: row.category_sort_order,
+                                slots: []
+                            };
+                            categoryMap.set(categoryId, categoryInfo);
+                            this.categories.push(categoryInfo);
+                        }
+                        
+                        // Add slot if it exists
+                        if (row.slot_id) {
+                            const slotInfo = {
+                                id: row.slot_id,
+                                slot_name: row.slot_name,
+                                display_name: row.slot_display_name,
+                                sort_order: row.slot_sort_order
+                            };
+                            categoryMap.get(categoryId).slots.push(slotInfo);
+                        }
+                    });
+                    
+                    // Convert to the formats expected by existing code
+                    this.categories.forEach(category => {
+                        CATEGORIES[category.display_name] = category.slots.map(slot => 
+                            `${category.name}_${slot.slot_name}`
+                        );
+                        this.categorySlots[category.id] = category.slots;
+                    });
+                    
+                    ALL_CATEGORY_DATA = this.categories;
+                    
+                    console.log('Processed categories:', this.categories);
+                    console.log('CATEGORIES object:', CATEGORIES);
+                    
+                } catch (error) {
+                    console.error('Error loading categories and slots:', error);
+                    this.showError('Failed to load categories and slots');
+                }
+            }
+
+            setDefaultCurrentCategory() {
+                // Try to restore last selected category from localStorage
+                const savedCategory = localStorage.getItem('cloudwalk-current-category');
+                
+                if (savedCategory && CATEGORIES[savedCategory]) {
+                    this.currentCategory = savedCategory;
+                } else if (this.categories.length > 0) {
+                    // Fallback to first category
+                    this.currentCategory = this.categories[0].display_name;
+                } else {
+                    this.currentCategory = null;
+                }
+                
+                console.log('Set current category to:', this.currentCategory);
+                
+                // Initialize UI after categories are loaded
+                this.renderCategories();
+                
+                // Update phone preview if we have a category
+                if (this.currentCategory) {
+                    this.updatePhonePreview(this.currentCategory);
+                }
             }
 
             async signIn() {
@@ -1097,65 +1366,96 @@
                 }
             }
 
-            initializeSlots() {
-                // Initialize all category-specific slots
-                Object.values(CATEGORIES).flat().forEach(slotName => {
-                    this.slots[slotName] = null;
-                });
-                this.renderCategories();
-            }
 
             renderCategories() {
+                if (this.categories.length === 0) {
+                    console.log('No categories loaded yet');
+                    return;
+                }
+                
+                console.log('Rendering categories:', this.categories);
+                
                 // Render category tabs
                 const categoriesDiv = document.getElementById('categories');
                 categoriesDiv.innerHTML = '';
                 
-                Object.keys(CATEGORIES).forEach((categoryName, index) => {
+                this.categories.forEach((category, index) => {
                     const tab = document.createElement('button');
-                    const config = CATEGORY_CONFIG[categoryName];
+                    const isActive = category.display_name === this.currentCategory;
                     
-                    let tabClass = `category-tab ${index === 0 ? 'active' : ''}`;
-                    if (config) {
-                        tabClass += ` ${config.bgClass}`;
+                    let tabClass = `category-tab ${isActive ? 'active' : ''}`;
+                    if (category.bg_class) {
+                        tabClass += ` ${category.bg_class}`;
                     }
                     
                     tab.className = tabClass;
-                    tab.dataset.category = categoryName;
-                    tab.onclick = () => this.switchCategory(categoryName);
+                    tab.dataset.category = category.display_name;
+                    tab.onclick = () => this.switchCategory(category.display_name);
                     
-                    // Add dot for MCC categories
-                    if (config) {
+                    // Add dot if background class exists (for MCC categories)
+                    if (category.bg_class) {
                         const dot = document.createElement('span');
                         dot.className = 'category-dot';
+                        dot.style.backgroundColor = category.color;
                         tab.appendChild(dot);
                     }
                     
                     // Add text
                     const textSpan = document.createElement('span');
-                    textSpan.textContent = categoryName;
+                    textSpan.textContent = category.display_name;
                     tab.appendChild(textSpan);
                     
                     categoriesDiv.appendChild(tab);
                 });
                 
+                // Add admin button for adding new categories
+                const addCategoryBtn = document.createElement('button');
+                addCategoryBtn.className = 'category-tab add-category-btn';
+                addCategoryBtn.style.background = '#f8f9fa';
+                addCategoryBtn.style.border = '2px dashed #ddd';
+                addCategoryBtn.onclick = () => this.showAddCategoryModal();
+                addCategoryBtn.innerHTML = '<span style="font-size: 18px;">+</span><span>Add Category</span>';
+                categoriesDiv.appendChild(addCategoryBtn);
+                
                 // Render category contents
                 const contentsDiv = document.getElementById('categoryContents');
                 contentsDiv.innerHTML = '';
                 
-                Object.keys(CATEGORIES).forEach((categoryName, index) => {
+                this.categories.forEach((category) => {
                     const categoryDiv = document.createElement('div');
-                    categoryDiv.id = `category-${categoryName}`;
-                    categoryDiv.className = `category-content ${index === 0 ? 'active' : ''}`;
+                    categoryDiv.id = `category-${category.display_name}`;
+                    categoryDiv.className = `category-content ${category.display_name === this.currentCategory ? 'active' : ''}`;
                     
                     const slotsGrid = document.createElement('div');
                     slotsGrid.className = 'slots-grid';
-                    slotsGrid.id = `slots-${categoryName}`;
+                    slotsGrid.id = `slots-${category.display_name}`;
                     
-                    CATEGORIES[categoryName].forEach(slotName => {
+                    // Get slots for this category
+                    const categorySlots = CATEGORIES[category.display_name] || [];
+                    categorySlots.forEach(slotName => {
                         const slotData = this.slots[slotName];
-                        const slotCard = this.createSlotCard(slotName, slotData);
+                        const slotCard = this.createSlotCard(slotName, slotData, category);
                         slotsGrid.appendChild(slotCard);
                     });
+                    
+                    // Add "Add Slot" button
+                    const addSlotCard = document.createElement('div');
+                    addSlotCard.className = 'slot-card add-slot-card';
+                    addSlotCard.style.border = '2px dashed #ddd';
+                    addSlotCard.style.cursor = 'pointer';
+                    addSlotCard.onclick = () => this.showAddSlotModal(category);
+                    addSlotCard.innerHTML = `
+                        <div class="slot-header">
+                            <div class="slot-name">Add New Slot</div>
+                        </div>
+                        <div class="slot-content" style="border: none;">
+                            <div class="slot-empty">
+                                <div style="font-size: 24px;">+</div>
+                                <div>Add new slot to category</div>
+                            </div>
+                        </div>
+                    `;
+                    slotsGrid.appendChild(addSlotCard);
                     
                     categoryDiv.appendChild(slotsGrid);
                     contentsDiv.appendChild(categoryDiv);
@@ -1194,7 +1494,7 @@
                 this.updateStats();
             }
 
-            createSlotCard(slotName, slotData) {
+            createSlotCard(slotName, slotData, category = null) {
                 const card = document.createElement('div');
                 card.className = `slot-card ${slotData ? 'has-asset' : ''}`;
                 card.dataset.slot = slotName;
@@ -1439,6 +1739,11 @@
             }
 
             updateStats() {
+                if (Object.keys(CATEGORIES).length === 0) {
+                    document.getElementById('stats').textContent = 'Loading categories...';
+                    return;
+                }
+                
                 // Calculate total across all categories
                 const allCategorySlots = Object.values(CATEGORIES).flat();
                 const total = allCategorySlots.length;
@@ -1449,6 +1754,197 @@
                 
                 document.getElementById('stats').textContent = 
                     `Total slots: ${total} | Assets uploaded: ${uploaded} | Current category: ${currentUploaded}/${currentCategorySlots.length}`;
+            }
+
+            showAddCategoryModal() {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Add New Category</h3>
+                            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="categoryDisplayName">Display Name:</label>
+                                <input type="text" id="categoryDisplayName" placeholder="e.g., Restaurant Assets" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="categoryDescription">Description (optional):</label>
+                                <textarea id="categoryDescription" placeholder="Brief description of this category"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="categoryColor">Color:</label>
+                                <input type="color" id="categoryColor" value="#667eea">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                            <button class="btn btn-primary" onclick="assetManager.createNewCategory()">Create Category</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // Focus on the first input
+                setTimeout(() => {
+                    document.getElementById('categoryDisplayName').focus();
+                }, 100);
+            }
+
+            showAddSlotModal(category) {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Add New Slot to "${category.display_name}"</h3>
+                            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="slotName">Slot Name (internal):</label>
+                                <input type="text" id="slotName" placeholder="e.g., menu_banner" pattern="[a-z_]+" title="Only lowercase letters and underscores" required>
+                                <small>Use lowercase letters and underscores only</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="slotDisplayName">Display Name:</label>
+                                <input type="text" id="slotDisplayName" placeholder="e.g., Menu Banner" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="slotDescription">Description (optional):</label>
+                                <textarea id="slotDescription" placeholder="What this slot is used for"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                            <button class="btn btn-primary" onclick="assetManager.createNewSlot(${category.id})">Create Slot</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // Focus on the first input and auto-generate display name
+                setTimeout(() => {
+                    const slotNameInput = document.getElementById('slotName');
+                    const slotDisplayInput = document.getElementById('slotDisplayName');
+                    
+                    slotNameInput.focus();
+                    
+                    // Auto-generate display name from slot name
+                    slotNameInput.addEventListener('input', () => {
+                        const displayName = slotNameInput.value
+                            .split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+                        slotDisplayInput.value = displayName;
+                    });
+                }, 100);
+            }
+
+            async createNewCategory() {
+                try {
+                    const displayName = document.getElementById('categoryDisplayName').value.trim();
+                    const description = document.getElementById('categoryDescription').value.trim();
+                    const color = document.getElementById('categoryColor').value;
+                    
+                    if (!displayName) {
+                        this.showError('Display name is required');
+                        return;
+                    }
+                    
+                    // Generate internal name from display name
+                    const internalName = displayName.toLowerCase()
+                        .replace(/[^a-z0-9\s]/g, '')
+                        .replace(/\s+/g, '_');
+                    
+                    // Get next sort order
+                    const maxSortOrder = Math.max(...this.categories.map(c => c.sort_order), 0);
+                    
+                    const categoryData = {
+                        name: internalName,
+                        display_name: displayName,
+                        description: description || null,
+                        color: color,
+                        sort_order: maxSortOrder + 1,
+                        created_by: this.user.email
+                    };
+                    
+                    const { data, error } = await this.supabase
+                        .from('categories')
+                        .insert(categoryData)
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    // Close modal
+                    document.querySelector('.modal-overlay').remove();
+                    
+                    // Reload categories and refresh UI
+                    await this.loadCategoriesAndSlots();
+                    this.renderCategories();
+                    
+                    this.showSuccess('Category created successfully!');
+                    
+                } catch (error) {
+                    console.error('Error creating category:', error);
+                    this.showError('Failed to create category');
+                }
+            }
+
+            async createNewSlot(categoryId) {
+                try {
+                    const slotName = document.getElementById('slotName').value.trim();
+                    const displayName = document.getElementById('slotDisplayName').value.trim();
+                    const description = document.getElementById('slotDescription').value.trim();
+                    
+                    if (!slotName || !displayName) {
+                        this.showError('Slot name and display name are required');
+                        return;
+                    }
+                    
+                    // Validate slot name format
+                    if (!/^[a-z_]+$/.test(slotName)) {
+                        this.showError('Slot name can only contain lowercase letters and underscores');
+                        return;
+                    }
+                    
+                    // Get category slots for sort order
+                    const categorySlots = this.categorySlots[categoryId] || [];
+                    const maxSortOrder = Math.max(...categorySlots.map(s => s.sort_order), 0);
+                    
+                    const slotData = {
+                        category_id: categoryId,
+                        slot_name: slotName,
+                        display_name: displayName,
+                        description: description || null,
+                        sort_order: maxSortOrder + 1,
+                        created_by: this.user.email
+                    };
+                    
+                    const { data, error } = await this.supabase
+                        .from('category_slots')
+                        .insert(slotData)
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    // Close modal
+                    document.querySelector('.modal-overlay').remove();
+                    
+                    // Reload categories and refresh UI
+                    await this.loadCategoriesAndSlots();
+                    this.renderCategories();
+                    
+                    this.showSuccess('Slot created successfully!');
+                    
+                } catch (error) {
+                    console.error('Error creating slot:', error);
+                    this.showError('Failed to create slot');
+                }
             }
 
             async removeAsset(slotName) {
