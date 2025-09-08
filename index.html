@@ -1259,40 +1259,27 @@
                         setTimeout(() => reject(new Error('Database query timeout')), 10000); // 10 second timeout
                     });
                     
-                    // Try to load from new dynamic structure first with timeout
+                    // Try SIMPLER direct table queries instead of complex view
                     const queryPromise = this.supabase
-                        .from('v_category_structure')
+                        .from('categories')
                         .select('*')
-                        .order('category_sort_order', { ascending: true })
-                        .order('slot_sort_order', { ascending: true });
+                        .eq('is_active', true)
+                        .order('sort_order', { ascending: true });
                     
-                    const { data: viewData, error: viewError } = await Promise.race([queryPromise, timeoutPromise]);
+                    const { data: categoriesData, error: categoriesError } = await Promise.race([queryPromise, timeoutPromise]);
                     
-                    if (viewError) {
-                        console.log('View query error:', viewError);
-                        throw viewError;
+                    if (categoriesError) {
+                        console.log('Categories query error:', categoriesError);
+                        throw categoriesError;
                     }
                     
-                    if (viewData && viewData.length > 0) {
-                        // New database structure exists - use it
-                        console.log('Using new dynamic category structure');
-                        this.processDynamicCategories(viewData);
+                    if (categoriesData && categoriesData.length > 0) {
+                        // Categories found - now get their slots
+                        console.log('Categories found, loading slots...');
+                        await this.loadCategoriesWithSlots(categoriesData);
                     } else {
-                        console.log('View returned empty data, trying direct table queries...');
-                        
-                        // Try direct table query as fallback
-                        const { data: categoriesData, error: categoriesError } = await Promise.race([
-                            this.supabase.from('categories').select('*').order('sort_order'),
-                            timeoutPromise
-                        ]);
-                        
-                        if (categoriesData && categoriesData.length > 0) {
-                            console.log('Direct categories table query successful');
-                            await this.loadFromDirectTables();
-                        } else {
-                            console.log('No categories found, falling back to hardcoded categories');
-                            this.useHardcodedCategories();
-                        }
+                        console.log('No categories found, falling back to hardcoded categories');
+                        this.useHardcodedCategories();
                     }
                     
                 } catch (error) {
@@ -1363,6 +1350,63 @@
                 } catch (error) {
                     console.error('Direct table queries failed:', error);
                     this.useHardcodedCategories();
+                }
+            }
+
+            async loadCategoriesWithSlots(categoriesData) {
+                try {
+                    console.log('Loading slots for', categoriesData.length, 'categories');
+                    
+                    // Load all slots for these categories
+                    const { data: slotsData, error: slotsError } = await this.supabase
+                        .from('category_slots')
+                        .select('*')
+                        .eq('is_active', true)
+                        .order('sort_order', { ascending: true });
+                    
+                    if (slotsError) {
+                        console.error('Error loading slots:', slotsError);
+                        throw slotsError;
+                    }
+                    
+                    console.log('Found', slotsData?.length || 0, 'slots');
+                    
+                    // Process the data
+                    this.categories = [];
+                    this.categorySlots = {};
+                    CATEGORIES = {};
+                    
+                    categoriesData.forEach(category => {
+                        // Get slots for this category
+                        const categorySlots = slotsData.filter(slot => slot.category_id === category.id);
+                        
+                        const categoryInfo = {
+                            id: category.id,
+                            name: category.name,
+                            display_name: category.display_name,
+                            color: category.color,
+                            bg_class: category.bg_class,
+                            sort_order: category.sort_order,
+                            slots: categorySlots.map(slot => ({
+                                id: slot.id,
+                                slot_name: slot.slot_name,
+                                display_name: slot.display_name,
+                                sort_order: slot.sort_order
+                            }))
+                        };
+                        
+                        this.categories.push(categoryInfo);
+                        this.categorySlots[category.id] = categoryInfo.slots;
+                        CATEGORIES[category.display_name] = categoryInfo.slots.map(slot => 
+                            `${category.name}_${slot.slot_name}`
+                        );
+                    });
+                    
+                    console.log('Successfully loaded dynamic categories:', this.categories);
+                    
+                } catch (error) {
+                    console.error('Error in loadCategoriesWithSlots:', error);
+                    throw error;
                 }
             }
 
