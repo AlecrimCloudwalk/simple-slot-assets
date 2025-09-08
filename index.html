@@ -1424,7 +1424,7 @@
             }
 
             useHardcodedCategories() {
-                console.log('Using hardcoded categories (legacy mode)');
+                console.log('Using hardcoded categories (offline mode with dynamic UI)');
                 
                 // All 13 slots based on video file names
                 const ALL_SLOTS = [
@@ -1449,11 +1449,11 @@
                 this.categorySlots = {};
                 CATEGORIES = {};
                 
-                // Build categories structure
+                // Build categories structure with proper IDs for dynamic features
                 let sortOrder = 1;
                 Object.entries(hardcodedCategories).forEach(([displayName, config]) => {
                     const categoryInfo = {
-                        id: sortOrder, // Use sort order as ID in legacy mode
+                        id: sortOrder, // Use sort order as ID
                         name: config.name,
                         display_name: displayName,
                         color: config.color,
@@ -1473,7 +1473,10 @@
                     sortOrder++;
                 });
                 
-                console.log('Hardcoded categories loaded:', this.categories);
+                console.log('Hardcoded categories loaded with dynamic UI:', this.categories);
+                
+                // Show offline mode message
+                this.showError('🔌 Working in offline mode - database connection issue. Add Category/Slot features available for testing!');
             }
 
             setDefaultCurrentCategory() {
@@ -2088,31 +2091,62 @@
                     // Get next sort order
                     const maxSortOrder = Math.max(...this.categories.map(c => c.sort_order), 0);
                     
-                    const categoryData = {
-                        name: internalName,
-                        display_name: displayName,
-                        description: description || null,
-                        color: color,
-                        sort_order: maxSortOrder + 1,
-                        created_by: this.user.email
-                    };
+                    // Check if we're in dynamic mode (database connected) or offline mode
+                    const isOfflineMode = this.categories.length > 0 && !this.categories[0].id.toString().includes('.');
                     
-                    const { data, error } = await this.supabase
-                        .from('categories')
-                        .insert(categoryData)
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    // Close modal
-                    document.querySelector('.modal-overlay').remove();
-                    
-                    // Reload categories and refresh UI
-                    await this.loadCategoriesAndSlots();
-                    this.renderCategories();
-                    
-                    this.showSuccess('Category created successfully!');
+                    if (isOfflineMode) {
+                        // Offline mode - just add to local data
+                        const newCategory = {
+                            id: maxSortOrder + 1,
+                            name: internalName,
+                            display_name: displayName,
+                            description: description || null,
+                            color: color,
+                            bg_class: '',
+                            sort_order: maxSortOrder + 1,
+                            slots: [] // Start with no slots
+                        };
+                        
+                        this.categories.push(newCategory);
+                        this.categorySlots[newCategory.id] = [];
+                        CATEGORIES[displayName] = [];
+                        
+                        // Close modal
+                        document.querySelector('.modal-overlay').remove();
+                        
+                        // Refresh UI
+                        this.renderCategories();
+                        
+                        this.showSuccess('Category added locally! (Offline mode - changes not saved to database)');
+                        
+                    } else {
+                        // Online mode - try database
+                        const categoryData = {
+                            name: internalName,
+                            display_name: displayName,
+                            description: description || null,
+                            color: color,
+                            sort_order: maxSortOrder + 1,
+                            created_by: this.user.email
+                        };
+                        
+                        const { data, error } = await this.supabase
+                            .from('categories')
+                            .insert(categoryData)
+                            .select()
+                            .single();
+                        
+                        if (error) throw error;
+                        
+                        // Close modal
+                        document.querySelector('.modal-overlay').remove();
+                        
+                        // Reload categories and refresh UI
+                        await this.loadCategoriesAndSlots();
+                        this.renderCategories();
+                        
+                        this.showSuccess('Category created successfully!');
+                    }
                     
                 } catch (error) {
                     console.error('Error creating category:', error);
@@ -2141,31 +2175,74 @@
                     const categorySlots = this.categorySlots[categoryId] || [];
                     const maxSortOrder = Math.max(...categorySlots.map(s => s.sort_order), 0);
                     
-                    const slotData = {
-                        category_id: categoryId,
-                        slot_name: slotName,
-                        display_name: displayName,
-                        description: description || null,
-                        sort_order: maxSortOrder + 1,
-                        created_by: this.user.email
-                    };
+                    // Check if we're in offline mode
+                    const isOfflineMode = this.categories.length > 0 && !this.categories[0].id.toString().includes('.');
                     
-                    const { data, error } = await this.supabase
-                        .from('category_slots')
-                        .insert(slotData)
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    // Close modal
-                    document.querySelector('.modal-overlay').remove();
-                    
-                    // Reload categories and refresh UI
-                    await this.loadCategoriesAndSlots();
-                    this.renderCategories();
-                    
-                    this.showSuccess('Slot created successfully!');
+                    if (isOfflineMode) {
+                        // Offline mode - add to local data
+                        const newSlot = {
+                            id: (categoryId * 1000) + maxSortOrder + 1, // Generate unique ID
+                            slot_name: slotName,
+                            display_name: displayName,
+                            description: description || null,
+                            sort_order: maxSortOrder + 1
+                        };
+                        
+                        // Add to category slots
+                        if (!this.categorySlots[categoryId]) {
+                            this.categorySlots[categoryId] = [];
+                        }
+                        this.categorySlots[categoryId].push(newSlot);
+                        
+                        // Update the category's slots array
+                        const category = this.categories.find(c => c.id === categoryId);
+                        if (category) {
+                            category.slots.push(newSlot);
+                            
+                            // Update CATEGORIES object
+                            const categoryName = category.name;
+                            if (!CATEGORIES[category.display_name]) {
+                                CATEGORIES[category.display_name] = [];
+                            }
+                            CATEGORIES[category.display_name].push(`${categoryName}_${slotName}`);
+                        }
+                        
+                        // Close modal
+                        document.querySelector('.modal-overlay').remove();
+                        
+                        // Refresh UI
+                        this.renderCategories();
+                        
+                        this.showSuccess('Slot added locally! (Offline mode - changes not saved to database)');
+                        
+                    } else {
+                        // Online mode - try database
+                        const slotData = {
+                            category_id: categoryId,
+                            slot_name: slotName,
+                            display_name: displayName,
+                            description: description || null,
+                            sort_order: maxSortOrder + 1,
+                            created_by: this.user.email
+                        };
+                        
+                        const { data, error } = await this.supabase
+                            .from('category_slots')
+                            .insert(slotData)
+                            .select()
+                            .single();
+                        
+                        if (error) throw error;
+                        
+                        // Close modal
+                        document.querySelector('.modal-overlay').remove();
+                        
+                        // Reload categories and refresh UI
+                        await this.loadCategoriesAndSlots();
+                        this.renderCategories();
+                        
+                        this.showSuccess('Slot created successfully!');
+                    }
                     
                 } catch (error) {
                     console.error('Error creating slot:', error);
