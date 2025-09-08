@@ -952,7 +952,8 @@
                 this.supabase = null;
                 this.user = null;
                 this.slots = {};
-                this.currentCategory = Object.keys(CATEGORIES)[0]; // First category by default
+                // Try to restore last selected category from localStorage, fallback to first category
+                this.currentCategory = localStorage.getItem('cloudwalk-current-category') || Object.keys(CATEGORIES)[0];
                 this.currentSlideIndex = 0;
                 this.currentCategoryAssets = [];
                 this.init();
@@ -1160,17 +1161,26 @@
             switchCategory(categoryName) {
                 this.currentCategory = categoryName;
                 
+                // Save current category to localStorage for persistence
+                localStorage.setItem('cloudwalk-current-category', categoryName);
+                
                 // Update tabs
                 document.querySelectorAll('.category-tab').forEach(tab => {
                     tab.classList.remove('active');
                 });
-                document.querySelector(`[data-category="${categoryName}"]`).classList.add('active');
+                const targetTab = document.querySelector(`[data-category="${categoryName}"]`);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                }
                 
                 // Update content
                 document.querySelectorAll('.category-content').forEach(content => {
                     content.classList.remove('active');
                 });
-                document.getElementById(`category-${categoryName}`).classList.add('active');
+                const targetContent = document.getElementById(`category-${categoryName}`);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                }
                 
                 // Update phone preview automatically
                 this.updatePhonePreview(categoryName);
@@ -1270,7 +1280,14 @@
                         this.slots[item.slot_name] = item;
                     });
                     
+                    // Store current category before re-rendering to preserve selection
+                    const previousCategory = this.currentCategory;
                     this.renderCategories();
+                    
+                    // Restore previous category selection
+                    if (previousCategory && CATEGORIES[previousCategory]) {
+                        this.switchCategory(previousCategory);
+                    }
                     
                     // Update phone preview after loading slots
                     if (this.currentCategory) {
@@ -1464,8 +1481,13 @@
                         { event: '*', schema: 'public', table: 'slot_assets' },
                         (payload) => {
                             console.log('Real-time update:', payload);
-                            this.loadSlots(); // Reload data on any change
-                            this.updatePhonePreview(); // Update preview on changes
+                            // Avoid unnecessary reloads by checking if current user made the change
+                            if (payload.new?.uploaded_by !== this.user?.email) {
+                                this.loadSlots(); // Only reload if someone else made changes
+                            } else {
+                                // Just update phone preview without full reload for own changes
+                                this.updatePhonePreview(this.currentCategory);
+                            }
                         }
                     )
                     .subscribe();
@@ -1576,8 +1598,20 @@
                         video.style.width = '100%';
                         video.style.height = '100%';
                         video.style.objectFit = 'cover';
+                        
+                        // Add error handling for videos
+                        video.onloadstart = () => console.log(`Video ${index} loading:`, video.src);
+                        video.oncanplay = () => console.log(`Video ${index} can play:`, video.src);
+                        video.onerror = (e) => {
+                            console.error(`Video ${index} failed to load:`, video.src, e);
+                            // Create fallback placeholder
+                            video.style.background = '#444';
+                            video.style.color = 'white';
+                            video.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:12px;">Video Load Error</div>';
+                        };
+                        
                         slide.appendChild(video);
-                        console.log('Created video slide:', video.src);
+                        console.log(`Created video slide ${index}:`, video.src);
                     } else if (asset.public_url) {
                         // Image slide with performance optimizations
                         const img = document.createElement('img');
@@ -1588,12 +1622,21 @@
                         img.style.width = '100%';
                         img.style.height = '100%';
                         img.style.objectFit = 'cover';
-                        img.onload = () => console.log('Image loaded:', img.src);
-                        img.onerror = () => console.error('Image failed to load:', img.src);
+                        img.onload = () => console.log(`Image ${index} loaded:`, img.src);
+                        img.onerror = (e) => {
+                            console.error(`Image ${index} failed to load:`, img.src, e);
+                            img.style.background = '#444';
+                            img.alt = 'Image Load Error';
+                        };
                         slide.appendChild(img);
-                        console.log('Created image slide:', img.src);
+                        console.log(`Created image slide ${index}:`, img.src);
                     } else {
-                        console.error('Asset has no public_url:', asset);
+                        console.error(`Asset ${index} has no public_url:`, asset);
+                        // Create placeholder for missing assets
+                        const placeholder = document.createElement('div');
+                        placeholder.style.cssText = 'width:100%;height:100%;background:#444;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;';
+                        placeholder.textContent = 'No Asset URL';
+                        slide.appendChild(placeholder);
                     }
                     
                     wrapper.appendChild(slide);
@@ -1852,6 +1895,10 @@
         // Initialize the application
         document.addEventListener('DOMContentLoaded', () => {
             assetManager = new CloudWalkAssetManager();
+            
+            // Note: "__cf_bm" cookie warnings in console are from Cloudflare (Supabase CDN)
+            // These are bot management cookies and the warnings are harmless but unavoidable
+            // when loading video/image assets from Supabase storage
         });
     </script>
 </body>
