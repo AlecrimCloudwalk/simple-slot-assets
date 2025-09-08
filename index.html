@@ -1733,21 +1733,33 @@
 
             handleGlobalDragEnter(e) {
                 e.preventDefault();
-                // Only show global overlay if not over a slot
-                if (!e.target.closest('.slot-content')) {
+                // Only show global overlay if not over any interactive element
+                if (!e.target.closest('.slot-content') && 
+                    !e.target.closest('.slot-card') &&
+                    !e.target.closest('.phone-panel') &&
+                    !e.target.closest('button')) {
                     document.getElementById('dropOverlay').classList.add('active');
                 }
             }
 
             handleGlobalDragOver(e) {
                 e.preventDefault();
+                // Only prevent default for valid drop zones or when showing overlay
+                if (e.target.closest('.slot-content') || 
+                    document.getElementById('dropOverlay').classList.contains('active')) {
+                    e.dataTransfer.dropEffect = 'copy';
+                } else {
+                    e.dataTransfer.dropEffect = 'none';
+                }
             }
 
             handleGlobalDragLeave(e) {
-                // Check if leaving the window completely
-                if (e.clientX === 0 && e.clientY === 0 || 
-                    e.clientX >= window.innerWidth || 
-                    e.clientY >= window.innerHeight) {
+                // Only hide overlay if we're actually leaving the window bounds
+                // and not just moving between elements
+                if (!e.relatedTarget || 
+                    (e.clientX <= 0 || e.clientY <= 0 || 
+                     e.clientX >= window.innerWidth || 
+                     e.clientY >= window.innerHeight)) {
                     document.getElementById('dropOverlay').classList.remove('active');
                 }
             }
@@ -1755,7 +1767,11 @@
             handleGlobalDrop(e) {
                 e.preventDefault();
                 document.getElementById('dropOverlay').classList.remove('active');
-                // Global drop doesn't auto-assign, user needs to drop on specific slots
+                // Only handle global drop if not over a slot
+                if (!e.target.closest('.slot-content')) {
+                    // Show message that files should be dropped on specific slots
+                    this.showError('Please drop files on specific slots, not on the background');
+                }
             }
 
             async exportAll() {
@@ -1870,13 +1886,18 @@
         function handleDragOver(event) {
             event.preventDefault();
             event.stopPropagation();
+            
             // Hide global overlay when over slot
             document.getElementById('dropOverlay').classList.remove('active');
+            
+            // Set proper drop effect for slots
+            event.dataTransfer.dropEffect = 'copy';
         }
 
         function handleDragEnter(event) {
             event.preventDefault();
             event.stopPropagation();
+            
             // Hide global overlay when entering slot
             document.getElementById('dropOverlay').classList.remove('active');
             
@@ -1888,6 +1909,8 @@
 
         function handleDragLeave(event) {
             event.preventDefault();
+            event.stopPropagation();
+            
             const slotContent = event.target.closest('.slot-content');
             if (slotContent && !slotContent.contains(event.relatedTarget)) {
                 slotContent.classList.remove('drag-over');
