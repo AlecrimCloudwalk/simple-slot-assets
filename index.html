@@ -1160,6 +1160,10 @@
                             this.showUserInfo(session.user);
                             this.showMainContent();
                             
+                            // Wait a bit for auth to fully settle before making database calls
+                            console.log('Auth successful, waiting for session to settle...');
+                            await new Promise(resolve => setTimeout(resolve, 1500));
+                            
                             // Load categories and slots, then load assets
                             await this.loadCategoriesAndSlots();
                             await this.loadSlots();
@@ -1170,7 +1174,7 @@
                             // Auto-refresh after a short delay for better loading
                             setTimeout(async () => {
                                 await this.loadSlots();
-                            }, 1000);
+                            }, 2000);
                         } else if (event === 'SIGNED_OUT') {
                             this.user = null;
                             this.showSignInButton();
@@ -1217,6 +1221,10 @@
                     this.showUserInfo(user);
                     this.showMainContent();
                     
+                    // Wait for auth to fully settle
+                    console.log('Initial auth check successful, waiting for session to settle...');
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
                     // Load categories and slots, then load assets
                     await this.loadCategoriesAndSlots();
                     await this.loadSlots();
@@ -1254,12 +1262,16 @@
                 try {
                     console.log('Loading categories and slots from database...');
                     
-                    // Add timeout to prevent infinite hanging
+                    // FIRST: Ensure authentication is fully ready
+                    await this.ensureAuthReady();
+                    
+                    // Add timeout to prevent infinite hanging  
                     const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error('Database query timeout')), 10000); // 10 second timeout
+                        setTimeout(() => reject(new Error('Database query timeout')), 15000); // 15 second timeout
                     });
                     
                     // Try SIMPLER direct table queries instead of complex view
+                    console.log('Attempting categories query...');
                     const queryPromise = this.supabase
                         .from('categories')
                         .select('*')
@@ -1270,6 +1282,14 @@
                     
                     if (categoriesError) {
                         console.log('Categories query error:', categoriesError);
+                        
+                        // If it's an auth error, try again after a delay
+                        if (categoriesError.message?.includes('auth') || categoriesError.code === 'PGRST301') {
+                            console.log('Auth error detected, retrying in 2 seconds...');
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            return this.loadCategoriesAndSlots(); // Retry once
+                        }
+                        
                         throw categoriesError;
                     }
                     
@@ -1284,10 +1304,42 @@
                     
                 } catch (error) {
                     console.error('Error loading dynamic categories, falling back to hardcoded:', error);
-                    this.showError('Database connection issue, using offline mode');
+                    this.showError('Database connection issue, using offline mode - will retry in background');
                     // Use hardcoded categories as fallback
                     this.useHardcodedCategories();
+                    
+                    // Retry in background after 5 seconds
+                    setTimeout(async () => {
+                        console.log('Background retry attempt...');
+                        try {
+                            await this.loadCategoriesAndSlots();
+                            // If successful, re-render
+                            this.renderCategories();
+                            this.showSuccess('✅ Database connection restored! Dynamic features now active.');
+                        } catch (retryError) {
+                            console.log('Background retry failed:', retryError);
+                        }
+                    }, 5000);
                 }
+            }
+
+            async ensureAuthReady() {
+                // Wait for auth to be fully initialized
+                if (!this.user) {
+                    console.log('No user found, waiting for auth...');
+                    return;
+                }
+                
+                // Check if we can access user session
+                const { data: { session }, error } = await this.supabase.auth.getSession();
+                
+                if (!session) {
+                    console.log('No session found, auth may not be ready');
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                    return;
+                }
+                
+                console.log('Auth ready, user:', session.user.email);
             }
 
             async loadFromDirectTables() {
