@@ -2778,18 +2778,28 @@
 
             async processFileUpload(file, slotName) {
                 try {
+                    console.log('📤 Starting file upload for slot:', slotName);
+                    console.log('📤 File details:', {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        sizeMB: (file.size / (1024 * 1024)).toFixed(2) + 'MB'
+                    });
+                    
                     // Check file size (different limits for images vs videos)
                     const isVideo = file.type.startsWith('video/');
                     const maxSize = isVideo ? 50 * 1024 * 1024 : 50 * 1024 * 1024; // 50MB for both images and videos
                     const sizeLimit = '50MB';
                     
                     if (file.size > maxSize) {
+                        console.error('📤 File too large:', file.size, 'bytes (max:', maxSize, 'bytes)');
                         this.showError(`File too large! Maximum size is ${sizeLimit}.`);
                         return;
                     }
                     
                     // Allow images and videos
                     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+                        console.error('📤 Invalid file type:', file.type);
                         this.showError('Please upload images or videos only (JPG, PNG, MP4, etc.)');
                         return;
                     }
@@ -2806,12 +2816,53 @@
                     const timestamp = Date.now().toString().slice(-8); // Last 8 digits for shorter timestamp
                     const fileName = `${categoryName}_${actualSlot}_${timestamp}.${fileExtension}`;
                     
+                    console.log('📤 Generated filename:', fileName);
+                    console.log('📤 Attempting upload to bucket: slot-assets');
+                    
+                    // Test storage bucket access first
+                    console.log('📤 Testing storage bucket access...');
+                    try {
+                        const { data: buckets, error: listError } = await this.supabase.storage.listBuckets();
+                        console.log('📤 Available storage buckets:', buckets?.map(b => b.name));
+                        
+                        if (listError) {
+                            console.error('📤 Error listing buckets:', listError);
+                        }
+                        
+                        const slotAssetsBucket = buckets?.find(b => b.name === 'slot-assets');
+                        if (!slotAssetsBucket) {
+                            console.error('📤 slot-assets bucket not found! Available buckets:', buckets?.map(b => b.name));
+                            throw new Error('Storage bucket "slot-assets" does not exist. Please create it in Supabase dashboard.');
+                        }
+                        
+                        console.log('📤 slot-assets bucket found:', slotAssetsBucket);
+                    } catch (bucketError) {
+                        console.error('📤 Bucket access test failed:', bucketError);
+                        throw new Error(`Storage bucket test failed: ${bucketError.message}`);
+                    }
+                    
                     // Upload file to Supabase Storage
+                    console.log('📤 Starting file upload to storage...');
+                    const uploadStartTime = Date.now();
+                    
                     const { data: uploadData, error: uploadError } = await this.supabase.storage
                         .from('slot-assets')
                         .upload(fileName, file);
                     
-                    if (uploadError) throw uploadError;
+                    const uploadDuration = Date.now() - uploadStartTime;
+                    console.log('📤 Upload completed in:', uploadDuration + 'ms');
+                    
+                    if (uploadError) {
+                        console.error('📤 Upload error details:', {
+                            error: uploadError,
+                            message: uploadError.message,
+                            statusCode: uploadError.statusCode,
+                            details: uploadError.error
+                        });
+                        throw uploadError;
+                    }
+                    
+                    console.log('📤 Upload successful:', uploadData);
                     
                     // Get public URL
                     const { data: urlData } = this.supabase.storage
@@ -2874,8 +2925,33 @@
                     this.showSuccess('Asset uploaded successfully!');
                     
                 } catch (error) {
-                    console.error('Upload error:', error);
-                    this.showError('Failed to upload asset');
+                    console.error('📤 Upload failed:', error);
+                    console.error('📤 Error details:', {
+                        message: error.message,
+                        stack: error.stack,
+                        name: error.name
+                    });
+                    
+                    // Provide specific error messages based on error type
+                    let errorMessage = 'Failed to upload asset';
+                    
+                    if (error.message.includes('slot-assets') && error.message.includes('does not exist')) {
+                        errorMessage = 'Storage bucket missing. Please create "slot-assets" bucket in Supabase dashboard.';
+                    } else if (error.message.includes('permission') || error.message.includes('access')) {
+                        errorMessage = 'Storage permission denied. Please check bucket policies in Supabase dashboard.';
+                    } else if (error.message.includes('size') || error.message.includes('limit')) {
+                        errorMessage = 'File too large or storage limit exceeded.';
+                    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                        errorMessage = 'Network error during upload. Please check your connection.';
+                    } else if (error.statusCode === 413) {
+                        errorMessage = 'File too large for upload.';
+                    } else if (error.statusCode === 401) {
+                        errorMessage = 'Authentication failed. Please sign out and sign back in.';
+                    } else if (error.statusCode === 403) {
+                        errorMessage = 'Storage access forbidden. Check bucket permissions.';
+                    }
+                    
+                    this.showError(`${errorMessage} (Technical: ${error.message})`);
                     
                     // Clear the local preview on error
                     this.slots[slotName] = null;
