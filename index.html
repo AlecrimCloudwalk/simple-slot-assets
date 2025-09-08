@@ -593,6 +593,11 @@
             /* Performance optimizations */
             will-change: transform;
             backface-visibility: hidden;
+            /* Ensure videos are visible */
+            opacity: 1;
+            visibility: visible;
+            background: transparent;
+            z-index: 1;
         }
 
         .carousel-slide-container img {
@@ -956,6 +961,7 @@
                 this.currentCategory = localStorage.getItem('cloudwalk-current-category') || Object.keys(CATEGORIES)[0];
                 this.currentSlideIndex = 0;
                 this.currentCategoryAssets = [];
+                this.carouselRenderTimeout = null; // Add throttling for carousel renders
                 this.init();
             }
 
@@ -1537,6 +1543,17 @@
             }
 
             renderCarousel() {
+                // Throttle carousel renders to prevent multiple rapid updates
+                if (this.carouselRenderTimeout) {
+                    clearTimeout(this.carouselRenderTimeout);
+                }
+                
+                this.carouselRenderTimeout = setTimeout(() => {
+                    this.performCarouselRender();
+                }, 50); // 50ms debounce
+            }
+            
+            performCarouselRender() {
                 const wrapper = document.getElementById('carouselSlidesWrapper');
                 const indicators = document.getElementById('carouselIndicators');
                 
@@ -1572,6 +1589,7 @@
                     const slide = document.createElement('div');
                     slide.className = 'carousel-slide-container';
                     slide.style.width = '100%'; // Each slide takes full width
+                    slide.style.backgroundColor = 'rgba(0,0,0,0.1)'; // Temporary debug background
                     
                     console.log(`Creating slide ${index}:`, asset);
                     
@@ -1598,10 +1616,22 @@
                         video.style.width = '100%';
                         video.style.height = '100%';
                         video.style.objectFit = 'cover';
+                        video.style.opacity = '1';
+                        video.style.visibility = 'visible';
+                        video.style.display = 'block';
+                        video.style.zIndex = '1';
                         
                         // Add error handling for videos
                         video.onloadstart = () => console.log(`Video ${index} loading:`, video.src);
-                        video.oncanplay = () => console.log(`Video ${index} can play:`, video.src);
+                        video.oncanplay = () => {
+                            console.log(`Video ${index} can play:`, video.src);
+                            // Ensure video plays after it can play
+                            setTimeout(() => {
+                                if (video.paused) {
+                                    video.play().catch(e => console.log(`Video ${index} autoplay blocked:`, e));
+                                }
+                            }, 100);
+                        };
                         video.onerror = (e) => {
                             console.error(`Video ${index} failed to load:`, video.src, e);
                             // Create fallback placeholder
