@@ -1368,6 +1368,8 @@
                         errorMessage = 'Authentication required for database access. Please refresh to re-authenticate.';
                     } else if (error.message.includes('Connectivity')) {
                         errorMessage = 'Cannot connect to database server. Please check your internet connection.';
+                    } else if (error.message.includes('RLS Performance') || error.message.includes('timeout') || error.message.includes('slow')) {
+                        errorMessage = 'Database queries are timing out due to inefficient Row Level Security policies. RLS policies need optimization.';
                     }
                     
                     this.showError(`${errorMessage} Technical details: ${technicalDetails}`);
@@ -1414,6 +1416,11 @@
                         description = 'Database is missing expected "is_active" columns.';
                         guidance = 'The diagnostics will automatically use a compatible query format.';
                         showRetry = true;
+                    } else if (error.message.includes('RLS Performance') || error.message.includes('timeout') || error.message.includes('slow')) {
+                        issueType = 'RLS Performance Issue';
+                        description = 'Database queries are timing out due to inefficient Row Level Security policies.';
+                        guidance = 'RLS policies need optimization. Run the provided SQL script to fix auth.uid() performance issues.';
+                        showRetry = false;
                     }
                     
                     let buttons = '';
@@ -1554,11 +1561,18 @@
                         strategy = schemaTest.optimalStrategy || 'full';
                     }
                     
-                    // 4. Test sample data
+                    // 4. Test sample data and RLS performance
                     console.log('🔍 Testing sample data availability...');
                     const dataTest = await this.testSampleData(strategy);
                     if (!dataTest.success) {
                         issues.push(`Data: ${dataTest.error}`);
+                    }
+                    
+                    // 5. Test RLS performance specifically
+                    console.log('🔍 Testing RLS policy performance...');
+                    const rlsTest = await this.testRLSPerformance();
+                    if (!rlsTest.success) {
+                        issues.push(`RLS Performance: ${rlsTest.error}`);
                     }
                     
                     console.log('🔍 Diagnostics complete:', { 
@@ -1845,6 +1859,71 @@
                     return { 
                         success: false, 
                         error: `Sample data test failed: ${error.message}`
+                    };
+                }
+            }
+            
+            async testRLSPerformance() {
+                try {
+                    console.log('🔍 Testing RLS policy performance on key tables...');
+                    
+                    const performanceTests = [
+                        { table: 'slot_assets', timeout: 3000 },
+                        { table: 'categories', timeout: 2000 },
+                        { table: 'category_slots', timeout: 2000 }
+                    ];
+                    
+                    for (const test of performanceTests) {
+                        const startTime = Date.now();
+                        
+                        try {
+                            console.log(`🔍 Testing ${test.table} query performance...`);
+                            
+                            const { data, error } = await Promise.race([
+                                this.supabase.from(test.table).select('id').limit(1),
+                                new Promise((_, reject) => 
+                                    setTimeout(() => reject(new Error(`${test.table} query timeout`)), test.timeout)
+                                )
+                            ]);
+                            
+                            const duration = Date.now() - startTime;
+                            console.log(`🔍 ${test.table} query completed in ${duration}ms`);
+                            
+                            if (error) {
+                                console.log(`🔍 ${test.table} query error:`, error);
+                                // Don't fail on individual table errors
+                                continue;
+                            }
+                            
+                            // Flag performance issues
+                            if (duration > 2000) {
+                                return {
+                                    success: false,
+                                    error: `${test.table} queries are slow (${duration}ms) - likely RLS policy performance issue. Consider optimizing RLS policies using scalar subqueries: (SELECT auth.uid()) instead of auth.uid()`
+                                };
+                            }
+                            
+                        } catch (queryError) {
+                            const duration = Date.now() - startTime;
+                            console.log(`🔍 ${test.table} performance test failed after ${duration}ms:`, queryError.message);
+                            
+                            if (queryError.message.includes('timeout')) {
+                                return {
+                                    success: false,
+                                    error: `${test.table} queries timeout (${duration}ms) - RLS policies likely need optimization. Use (SELECT auth.uid()) instead of auth.uid() in policies.`
+                                };
+                            }
+                        }
+                    }
+                    
+                    console.log('✅ All RLS performance tests passed');
+                    return { success: true };
+                    
+                } catch (error) {
+                    console.log('🔍 RLS performance test crashed:', error);
+                    return {
+                        success: false,
+                        error: `RLS performance test failed: ${error.message}`
                     };
                 }
             }
