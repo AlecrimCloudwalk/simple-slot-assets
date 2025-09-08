@@ -1265,23 +1265,59 @@
                     // FIRST: Ensure authentication is fully ready
                     await this.ensureAuthReady();
                     
+                    // TEMPORARY: Skip database entirely for testing
+                    if (window.location.hash === '#skip-db') {
+                        console.log('🚨 SKIPPING DATABASE - Testing hardcoded mode');
+                        this.useHardcodedCategories();
+                        return;
+                    }
+                    
                     // Add timeout to prevent infinite hanging  
                     const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error('Database query timeout')), 15000); // 15 second timeout
+                        setTimeout(() => {
+                            console.log('⏰ Database query TIMED OUT after 15 seconds');
+                            reject(new Error('Database query timeout'));
+                        }, 15000); // 15 second timeout
                     });
                     
                     // Try SIMPLER direct table queries instead of complex view
-                    console.log('Attempting categories query...');
+                    console.log('🔍 Attempting categories query...');
+                    console.log('🔍 Supabase client ready:', !!this.supabase);
+                    console.log('🔍 User session:', this.user?.email);
+                    
+                    // Test with the most basic query possible
+                    console.log('🔍 Starting database query...');
                     const queryPromise = this.supabase
                         .from('categories')
-                        .select('*')
-                        .eq('is_active', true)
-                        .order('sort_order', { ascending: true });
+                        .select('id, name, display_name')
+                        .limit(5);
                     
+                    console.log('🔍 Query created, awaiting response...');
                     const { data: categoriesData, error: categoriesError } = await Promise.race([queryPromise, timeoutPromise]);
+                    console.log('🔍 Query completed! Data:', categoriesData, 'Error:', categoriesError);
                     
                     if (categoriesError) {
-                        console.log('Categories query error:', categoriesError);
+                        console.log('❌ Categories query error:', categoriesError);
+                        
+                        // Try a basic connectivity test
+                        console.log('🔍 Testing basic database connectivity...');
+                        try {
+                            const { data: testData, error: testError } = await this.supabase
+                                .from('slot_assets')
+                                .select('id')
+                                .limit(1);
+                            
+                            console.log('🔍 Basic connectivity test result:', testData, testError);
+                            
+                            if (testError) {
+                                console.log('❌ Basic connectivity failed:', testError);
+                                throw new Error(`Database connection failed: ${testError.message}`);
+                            } else {
+                                console.log('✅ Basic connectivity works, but categories table has issues');
+                            }
+                        } catch (connectError) {
+                            console.log('❌ Connectivity test failed:', connectError);
+                        }
                         
                         // If it's an auth error, try again after a delay
                         if (categoriesError.message?.includes('auth') || categoriesError.code === 'PGRST301') {
