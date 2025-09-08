@@ -466,6 +466,8 @@
             height: 100%;
             justify-content: center;
             align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .close-btn {
@@ -486,8 +488,11 @@
 
         .phone-mockup {
             position: relative;
-            width: 290px;
-            height: 600px;
+            width: 100%;
+            max-width: 290px;
+            aspect-ratio: 290/600; /* Maintain phone proportions */
+            height: auto;
+            max-height: calc(100vh - 120px); /* Leave space for controls */
             background: transparent;
             overflow: visible;
             margin: 0 auto;
@@ -495,10 +500,10 @@
 
         .phone-mockup-video {
             position: absolute;
-            top: 22px;
-            left: 22px;
-            width: calc(100% - 44px);
-            height: calc(100% - 44px);
+            top: 3.7%;
+            left: 7.6%;
+            width: 84.8%;
+            height: 92.6%;
             border-radius: 30px;
             object-fit: cover;
             z-index: 1;
@@ -521,18 +526,18 @@
 
         .video-overlay {
             position: absolute;
-            top: calc(50% + 55px);
+            top: 69%;
             left: 50%;
-            transform: translate(-50%, -65%);
+            transform: translate(-50%, -50%);
             width: 76%;
-            height: 140px;
+            height: 23%;
             border-radius: 14px;
             overflow: hidden;
             z-index: 20;
         }
 
         .video-overlay:hover {
-            transform: translate(-50%, -65%) scale(1.02);
+            transform: translate(-50%, -50%) scale(1.02);
         }
 
         .video-overlay .video-component {
@@ -735,12 +740,15 @@
             justify-content: center;
             align-items: center;
             gap: 16px;
-            margin-top: 20px;
-            padding: 16px 20px;
+            margin-top: 2vh;
+            padding: 1.5vh 20px;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
             backdrop-filter: blur(10px);
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            max-width: 290px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .carousel-controls .btn {
@@ -971,11 +979,19 @@
                 height: 4px;
             }
             
-            /* Responsive carousel controls */
+            /* Responsive phone mockup and controls */
+            .phone-mockup {
+                max-width: none;
+                width: 90%;
+                max-height: calc(100vh - 80px);
+            }
+            
             .carousel-controls {
-                padding: 12px 16px;
+                padding: 1vh 16px;
                 gap: 12px;
-                margin-top: 15px;
+                margin-top: 1.5vh;
+                max-width: none;
+                width: 90%;
             }
             
             .carousel-controls .btn {
@@ -1238,74 +1254,138 @@
                 try {
                     console.log('Loading categories and slots from database...');
                     
-                    // Load categories with their slots using the view
-                    const { data: categoryData, error: categoryError } = await this.supabase
+                    // Try to load from new dynamic structure first
+                    const { data: viewData, error: viewError } = await this.supabase
                         .from('v_category_structure')
                         .select('*')
                         .order('category_sort_order', { ascending: true })
                         .order('slot_sort_order', { ascending: true });
                     
-                    if (categoryError) throw categoryError;
-                    
-                    console.log('Raw category data:', categoryData);
-                    
-                    // Reset data structures
-                    this.categories = [];
-                    this.categorySlots = {};
-                    CATEGORIES = {};
-                    ALL_CATEGORY_DATA = [];
-                    
-                    // Group data by category
-                    const categoryMap = new Map();
-                    
-                    categoryData.forEach(row => {
-                        const categoryId = row.category_id;
-                        const categoryName = row.category_display_name;
-                        
-                        // Initialize category if not exists
-                        if (!categoryMap.has(categoryId)) {
-                            const categoryInfo = {
-                                id: categoryId,
-                                name: row.category_name,
-                                display_name: categoryName,
-                                color: row.category_color,
-                                bg_class: row.category_bg_class,
-                                sort_order: row.category_sort_order,
-                                slots: []
-                            };
-                            categoryMap.set(categoryId, categoryInfo);
-                            this.categories.push(categoryInfo);
-                        }
-                        
-                        // Add slot if it exists
-                        if (row.slot_id) {
-                            const slotInfo = {
-                                id: row.slot_id,
-                                slot_name: row.slot_name,
-                                display_name: row.slot_display_name,
-                                sort_order: row.slot_sort_order
-                            };
-                            categoryMap.get(categoryId).slots.push(slotInfo);
-                        }
-                    });
-                    
-                    // Convert to the formats expected by existing code
-                    this.categories.forEach(category => {
-                        CATEGORIES[category.display_name] = category.slots.map(slot => 
-                            `${category.name}_${slot.slot_name}`
-                        );
-                        this.categorySlots[category.id] = category.slots;
-                    });
-                    
-                    ALL_CATEGORY_DATA = this.categories;
-                    
-                    console.log('Processed categories:', this.categories);
-                    console.log('CATEGORIES object:', CATEGORIES);
+                    if (viewData && viewData.length > 0) {
+                        // New database structure exists - use it
+                        console.log('Using new dynamic category structure');
+                        this.processDynamicCategories(viewData);
+                    } else {
+                        // Fallback to hardcoded categories (old structure)
+                        console.log('Fallback to hardcoded categories - database not migrated yet');
+                        this.useHardcodedCategories();
+                    }
                     
                 } catch (error) {
-                    console.error('Error loading categories and slots:', error);
-                    this.showError('Failed to load categories and slots');
+                    console.error('Error loading dynamic categories, falling back to hardcoded:', error);
+                    // Use hardcoded categories as fallback
+                    this.useHardcodedCategories();
                 }
+            }
+
+            processDynamicCategories(categoryData) {
+                console.log('Raw category data:', categoryData);
+                
+                // Reset data structures
+                this.categories = [];
+                this.categorySlots = {};
+                CATEGORIES = {};
+                ALL_CATEGORY_DATA = [];
+                
+                // Group data by category
+                const categoryMap = new Map();
+                
+                categoryData.forEach(row => {
+                    const categoryId = row.category_id;
+                    const categoryName = row.category_display_name;
+                    
+                    // Initialize category if not exists
+                    if (!categoryMap.has(categoryId)) {
+                        const categoryInfo = {
+                            id: categoryId,
+                            name: row.category_name,
+                            display_name: categoryName,
+                            color: row.category_color,
+                            bg_class: row.category_bg_class,
+                            sort_order: row.category_sort_order,
+                            slots: []
+                        };
+                        categoryMap.set(categoryId, categoryInfo);
+                        this.categories.push(categoryInfo);
+                    }
+                    
+                    // Add slot if it exists
+                    if (row.slot_id) {
+                        const slotInfo = {
+                            id: row.slot_id,
+                            slot_name: row.slot_name,
+                            display_name: row.slot_display_name,
+                            sort_order: row.slot_sort_order
+                        };
+                        categoryMap.get(categoryId).slots.push(slotInfo);
+                    }
+                });
+                
+                // Convert to the formats expected by existing code
+                this.categories.forEach(category => {
+                    CATEGORIES[category.display_name] = category.slots.map(slot => 
+                        `${category.name}_${slot.slot_name}`
+                    );
+                    this.categorySlots[category.id] = category.slots;
+                });
+                
+                ALL_CATEGORY_DATA = this.categories;
+                
+                console.log('Processed categories:', this.categories);
+                console.log('CATEGORIES object:', CATEGORIES);
+            }
+
+            useHardcodedCategories() {
+                console.log('Using hardcoded categories (legacy mode)');
+                
+                // All 13 slots based on video file names
+                const ALL_SLOTS = [
+                    'checkout', 'create_bill', 'dirf', 'infinite_card',
+                    'infinite_cash_can_request_limit', 'infinite_cash',
+                    'instant_settlement', 'pay_bill', 'piselli', 'pix_credit',
+                    'referral', 'supercobra', 'tap'
+                ];
+
+                // Hardcoded categories with legacy structure
+                const hardcodedCategories = {
+                    'AI Images': { name: 'ai_images', color: '#667eea', bg_class: '' },
+                    '3D Images': { name: '3d_images', color: '#28a745', bg_class: 'mcc-mercadinho' },
+                    'Real Footage': { name: 'real_footage', color: '#ffc107', bg_class: 'mcc-roupa' },
+                    'Mercadinho': { name: 'mercadinho', color: '#28a745', bg_class: 'mcc-mercadinho' },
+                    'Loja de Roupa': { name: 'loja_de_roupa', color: '#ffc107', bg_class: 'mcc-roupa' },
+                    'Sala Beleza/Barbearia': { name: 'sala_beleza_barbearia', color: '#dc3545', bg_class: 'mcc-beleza' }
+                };
+
+                // Reset data structures
+                this.categories = [];
+                this.categorySlots = {};
+                CATEGORIES = {};
+                
+                // Build categories structure
+                let sortOrder = 1;
+                Object.entries(hardcodedCategories).forEach(([displayName, config]) => {
+                    const categoryInfo = {
+                        id: sortOrder, // Use sort order as ID in legacy mode
+                        name: config.name,
+                        display_name: displayName,
+                        color: config.color,
+                        bg_class: config.bg_class,
+                        sort_order: sortOrder,
+                        slots: ALL_SLOTS.map((slot, index) => ({
+                            id: sortOrder * 100 + index, // Generate unique slot IDs
+                            slot_name: slot,
+                            display_name: slot.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            sort_order: index + 1
+                        }))
+                    };
+                    
+                    this.categories.push(categoryInfo);
+                    this.categorySlots[categoryInfo.id] = categoryInfo.slots;
+                    CATEGORIES[displayName] = ALL_SLOTS.map(slot => `${config.name}_${slot}`);
+                    sortOrder++;
+                });
+                
+                console.log('Hardcoded categories loaded:', this.categories);
             }
 
             setDefaultCurrentCategory() {
@@ -1408,14 +1488,17 @@
                     categoriesDiv.appendChild(tab);
                 });
                 
-                // Add admin button for adding new categories
-                const addCategoryBtn = document.createElement('button');
-                addCategoryBtn.className = 'category-tab add-category-btn';
-                addCategoryBtn.style.background = '#f8f9fa';
-                addCategoryBtn.style.border = '2px dashed #ddd';
-                addCategoryBtn.onclick = () => this.showAddCategoryModal();
-                addCategoryBtn.innerHTML = '<span style="font-size: 18px;">+</span><span>Add Category</span>';
-                categoriesDiv.appendChild(addCategoryBtn);
+                // Add admin button for adding new categories (only if new database structure is available)
+                const isNewStructure = this.categories.length > 0 && this.categories[0].id && this.categorySlots[this.categories[0].id];
+                if (isNewStructure) {
+                    const addCategoryBtn = document.createElement('button');
+                    addCategoryBtn.className = 'category-tab add-category-btn';
+                    addCategoryBtn.style.background = '#f8f9fa';
+                    addCategoryBtn.style.border = '2px dashed #ddd';
+                    addCategoryBtn.onclick = () => this.showAddCategoryModal();
+                    addCategoryBtn.innerHTML = '<span style="font-size: 18px;">+</span><span>Add Category</span>';
+                    categoriesDiv.appendChild(addCategoryBtn);
+                }
                 
                 // Render category contents
                 const contentsDiv = document.getElementById('categoryContents');
@@ -1438,24 +1521,26 @@
                         slotsGrid.appendChild(slotCard);
                     });
                     
-                    // Add "Add Slot" button
-                    const addSlotCard = document.createElement('div');
-                    addSlotCard.className = 'slot-card add-slot-card';
-                    addSlotCard.style.border = '2px dashed #ddd';
-                    addSlotCard.style.cursor = 'pointer';
-                    addSlotCard.onclick = () => this.showAddSlotModal(category);
-                    addSlotCard.innerHTML = `
-                        <div class="slot-header">
-                            <div class="slot-name">Add New Slot</div>
-                        </div>
-                        <div class="slot-content" style="border: none;">
-                            <div class="slot-empty">
-                                <div style="font-size: 24px;">+</div>
-                                <div>Add new slot to category</div>
+                    // Add "Add Slot" button (only if new database structure is available)
+                    if (isNewStructure) {
+                        const addSlotCard = document.createElement('div');
+                        addSlotCard.className = 'slot-card add-slot-card';
+                        addSlotCard.style.border = '2px dashed #ddd';
+                        addSlotCard.style.cursor = 'pointer';
+                        addSlotCard.onclick = () => this.showAddSlotModal(category);
+                        addSlotCard.innerHTML = `
+                            <div class="slot-header">
+                                <div class="slot-name">Add New Slot</div>
                             </div>
-                        </div>
-                    `;
-                    slotsGrid.appendChild(addSlotCard);
+                            <div class="slot-content" style="border: none;">
+                                <div class="slot-empty">
+                                    <div style="font-size: 24px;">+</div>
+                                    <div>Add new slot to category</div>
+                                </div>
+                            </div>
+                        `;
+                        slotsGrid.appendChild(addSlotCard);
+                    }
                     
                     categoryDiv.appendChild(slotsGrid);
                     contentsDiv.appendChild(categoryDiv);
@@ -1640,13 +1725,13 @@
                     this.showInstantPreview(file, slotName);
                     this.showSuccess('Uploading file...');
                     
-                    // Extract category and slot from slotName (e.g., "ai_images_checkout" -> "ai_images", "checkout")
+                    // Extract category and slot from slotName for file naming
                     const slotParts = slotName.split('_');
                     const actualSlot = slotParts.pop(); // Last part (e.g., "checkout")
-                    const category = slotParts.join('_'); // Rest joined (e.g., "ai_images")
+                    const categoryName = slotParts.join('_'); // Rest joined (e.g., "ai_images")
                     const fileExtension = file.name.split('.').pop();
                     const timestamp = Date.now().toString().slice(-8); // Last 8 digits for shorter timestamp
-                    const fileName = `${category}_${actualSlot}_${timestamp}.${fileExtension}`;
+                    const fileName = `${categoryName}_${actualSlot}_${timestamp}.${fileExtension}`;
                     
                     // Upload file to Supabase Storage
                     const { data: uploadData, error: uploadError } = await this.supabase.storage
@@ -1660,19 +1745,49 @@
                         .from('slot-assets')
                         .getPublicUrl(fileName);
                     
-                    // Save to database
-                    const slotData = {
-                        slot_name: slotName,
-                        filename: file.name,
-                        public_url: urlData.publicUrl,
-                        storage_path: fileName,
-                        uploaded_by: this.user.email,
-                        updated_at: new Date().toISOString()
-                    };
+                    // Check if we're using the new database structure or legacy
+                    const isNewStructure = this.categories.length > 0 && this.categories[0].id && this.categorySlots[this.categories[0].id];
                     
+                    let slotData;
+                    let upsertConfig;
+                    
+                    if (isNewStructure) {
+                        // New database structure with category_id and slot_id
+                        const category = this.findCategoryBySlotName(slotName);
+                        const slot = this.findSlotByName(slotName, category);
+                        
+                        if (!category || !slot) {
+                            throw new Error('Could not find category or slot for: ' + slotName);
+                        }
+                        
+                        slotData = {
+                            category_id: category.id,
+                            slot_id: slot.id,
+                            slot_name: slotName, // Keep for backward compatibility
+                            filename: file.name,
+                            public_url: urlData.publicUrl,
+                            storage_path: fileName,
+                            uploaded_by: this.user.email,
+                            updated_at: new Date().toISOString()
+                        };
+                        upsertConfig = { onConflict: 'category_id,slot_id' };
+                    } else {
+                        // Legacy database structure (just slot_name)
+                        slotData = {
+                            slot_name: slotName,
+                            filename: file.name,
+                            public_url: urlData.publicUrl,
+                            storage_path: fileName,
+                            uploaded_by: this.user.email,
+                            updated_at: new Date().toISOString()
+                        };
+                        upsertConfig = { onConflict: 'slot_name' };
+                    }
+                    
+                    // Save to database
                     const { error: dbError } = await this.supabase
                         .from('slot_assets')
-                        .upsert(slotData, { onConflict: 'slot_name' });
+                        .upsert(slotData, upsertConfig);
                     
                     if (dbError) throw dbError;
                     
@@ -1695,6 +1810,29 @@
                 }
             }
 
+            findCategoryBySlotName(slotName) {
+                // Find which category this slot belongs to
+                for (const category of this.categories) {
+                    const categorySlots = CATEGORIES[category.display_name] || [];
+                    if (categorySlots.includes(slotName)) {
+                        return category;
+                    }
+                }
+                return null;
+            }
+
+            findSlotByName(slotName, category) {
+                if (!category) return null;
+                
+                // Extract the actual slot name from the full slot name
+                // e.g., "ai_images_checkout" -> "checkout"
+                const slotParts = slotName.split('_');
+                const actualSlotName = slotParts.pop();
+                
+                // Find the slot in the category's slots
+                const slots = this.categorySlots[category.id] || [];
+                return slots.find(slot => slot.slot_name === actualSlotName);
+            }
 
             showInstantPreview(file, slotName) {
                 // Create object URL for both images and videos
