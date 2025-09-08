@@ -85,16 +85,16 @@
 
         .slots-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(min(120px, calc(100vw - 60px)), 1fr));
+            gap: clamp(10px, 2vw, 15px);
             margin-bottom: 30px;
             max-width: 100%;
         }
 
         .slot {
             aspect-ratio: 1;
-            border: 3px dashed #ccc;
-            border-radius: 12px;
+            border: clamp(2px, 0.5vw, 3px) dashed #ccc;
+            border-radius: clamp(8px, 2vw, 12px);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -103,7 +103,8 @@
             transition: all 0.3s ease;
             background: #fafafa;
             position: relative;
-            min-height: 120px;
+            min-height: clamp(80px, 15vw, 120px);
+            width: 100%;
         }
 
         .slot:hover {
@@ -119,8 +120,23 @@
         }
 
         .slot.filled {
-            border: 3px solid #28a745;
+            border: clamp(2px, 0.5vw, 3px) solid #28a745;
             background: white;
+        }
+
+        /* Ensure content never overflows and maintains proportions */
+        .slot-content > * {
+            flex-shrink: 0;
+        }
+        
+        /* Prevent text overflow in small slots */
+        .slot-filename,
+        .slot-empty {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            text-overflow: ellipsis;
         }
 
         .slot-content {
@@ -130,43 +146,51 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            padding: clamp(5px, 2vw, 10px);
+            box-sizing: border-box;
         }
 
         .slot-preview {
             width: 80%;
             height: 60%;
+            max-height: calc(100% - 40px);
             object-fit: cover;
-            border-radius: 6px;
-            margin-bottom: 8px;
+            border-radius: clamp(3px, 1vw, 6px);
+            margin-bottom: clamp(4px, 1vw, 8px);
+            flex-shrink: 0;
         }
 
         .slot-filename {
-            font-size: 0.75rem;
+            font-size: clamp(0.6rem, 1.5vw, 0.75rem);
             text-align: center;
             color: #666;
             word-break: break-word;
             max-height: 30%;
             overflow: hidden;
+            line-height: 1.2;
+            flex-shrink: 0;
         }
 
         .slot-empty {
             color: #999;
-            font-size: 0.9rem;
+            font-size: clamp(0.7rem, 2vw, 0.9rem);
             text-align: center;
+            line-height: 1.2;
         }
 
         .slot-url {
             background: #e9ecef;
             border: 1px solid #ced4da;
-            border-radius: 4px;
-            padding: 5px 8px;
-            font-size: 0.7rem;
-            margin-top: 5px;
+            border-radius: clamp(2px, 0.8vw, 4px);
+            padding: clamp(3px 4px, 1vw, 5px 8px);
+            font-size: clamp(0.5rem, 1.2vw, 0.7rem);
+            margin-top: clamp(3px, 1vw, 5px);
             width: 100%;
             text-align: center;
             color: #495057;
             user-select: all;
+            box-sizing: border-box;
+            flex-shrink: 0;
         }
 
         .controls {
@@ -250,23 +274,68 @@
             display: flex;
         }
 
+        /* Enhanced responsive design */
+        @media (max-width: 1200px) {
+            .container {
+                padding: clamp(15px, 3vw, 30px);
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
-                padding: 20px;
+                padding: clamp(10px, 4vw, 20px);
             }
             
             .header h1 {
-                font-size: 2rem;
+                font-size: clamp(1.8rem, 5vw, 2rem);
+            }
+            
+            .header p {
+                font-size: clamp(0.9rem, 2.5vw, 1.1rem);
             }
             
             .slots-container {
-                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                gap: 10px;
+                grid-template-columns: repeat(auto-fit, minmax(min(90px, calc(100vw - 40px)), 1fr));
+                gap: clamp(8px, 2vw, 12px);
+            }
+            
+            .slot {
+                min-height: clamp(70px, 12vw, 100px);
             }
             
             .controls {
                 flex-direction: column;
                 align-items: center;
+                gap: clamp(8px, 2vw, 15px);
+            }
+            
+            .btn {
+                padding: clamp(8px 12px, 2vw, 12px 24px);
+                font-size: clamp(0.8rem, 2.5vw, 1rem);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .slots-container {
+                grid-template-columns: repeat(auto-fit, minmax(min(80px, calc(50vw - 20px)), 1fr));
+                gap: clamp(6px, 1.5vw, 10px);
+            }
+            
+            .slot {
+                min-height: clamp(60px, 10vw, 80px);
+            }
+            
+            .category-tab {
+                padding: clamp(6px 12px, 2vw, 12px 24px);
+                font-size: clamp(0.7rem, 2vw, 1rem);
+                min-width: clamp(80px, 20vw, 120px);
+            }
+        }
+
+        @media (max-width: 320px) {
+            .slots-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: clamp(5px, 1vw, 8px);
             }
         }
     </style>
