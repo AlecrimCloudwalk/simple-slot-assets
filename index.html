@@ -1154,27 +1154,50 @@
                     
                     // Set up auth state listener
                     this.supabase.auth.onAuthStateChange(async (event, session) => {
-                        console.log('Auth state changed:', event, session?.user?.email);
+                        console.log('🔐 Auth state changed:', event, session?.user?.email);
                         if (event === 'SIGNED_IN' && session?.user) {
                             this.user = session.user;
                             this.showUserInfo(session.user);
                             this.showMainContent();
                             
-                            // Wait a bit for auth to fully settle before making database calls
-                            console.log('Auth successful, waiting for session to settle...');
-                            await new Promise(resolve => setTimeout(resolve, 1500));
-                            
-                            // Load categories and slots, then load assets
-                            await this.loadCategoriesAndSlots();
-                            await this.loadSlots();
-                            
-                            // Set current category after loading
-                            this.setDefaultCurrentCategory();
-                            
-                            // Auto-refresh after a short delay for better loading
-                            setTimeout(async () => {
+                            try {
+                                // Show loading state with informative message
+                                this.showAuthLoading('🔐 Authenticated! Loading your data...');
+                                
+                                // Shorter initial wait since we now have robust auth checking
+                                console.log('🔐 Auth successful, brief wait before loading...');
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                
+                                // Update loading message
+                                this.showAuthLoading('🔍 Running database diagnostics...');
+                                
+                                // Load categories and slots with diagnostic approach
+                                await this.loadCategoriesAndSlots();
+                                
+                                // Update loading message
+                                this.showAuthLoading('🎰 Loading your slots...');
                                 await this.loadSlots();
-                            }, 2000);
+                                
+                                // Set current category after loading
+                                this.setDefaultCurrentCategory();
+                                
+                                // Auto-refresh after a short delay for better loading
+                                setTimeout(async () => {
+                                    try {
+                                        await this.loadSlots();
+                                    } catch (refreshError) {
+                                        console.log('⚠️ Auto-refresh failed:', refreshError);
+                                    }
+                                }, 3000);
+                                
+                            } catch (loadError) {
+                                console.error('❌ Error during post-auth loading:', loadError);
+                                this.showError('Failed to load data after authentication');
+                            } finally {
+                                // Always hide loading state
+                                this.hideAuthLoading();
+                            }
+                            
                         } else if (event === 'SIGNED_OUT') {
                             this.user = null;
                             this.showSignInButton();
@@ -1199,43 +1222,78 @@
             }
 
             async checkAuth() {
-                // Handle OAuth callback tokens first
-                const { data: session, error: sessionError } = await this.supabase.auth.getSession();
-                
-                if (sessionError) {
-                    console.error('Session error:', sessionError);
-                }
-                
-                const { data: { user } } = await this.supabase.auth.getUser();
-                
-                if (user) {
-                    // Check if user email is from cloudwalk.io domain
-                    if (!user.email || !user.email.endsWith('@cloudwalk.io')) {
-                        await this.supabase.auth.signOut();
-                        this.showError('Access restricted to @cloudwalk.io domain users only');
+                try {
+                    console.log('🔐 Checking initial authentication...');
+                    
+                    // Handle OAuth callback tokens first
+                    const { data: session, error: sessionError } = await this.supabase.auth.getSession();
+                    
+                    if (sessionError) {
+                        console.error('🔐 Session error:', sessionError);
                         this.showSignInButton();
                         return;
                     }
                     
-                    this.user = user;
-                    this.showUserInfo(user);
-                    this.showMainContent();
+                    const { data: { user }, error: userError } = await this.supabase.auth.getUser();
                     
-                    // Wait for auth to fully settle
-                    console.log('Initial auth check successful, waiting for session to settle...');
-                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    if (userError) {
+                        console.error('🔐 User error:', userError);
+                        this.showSignInButton();
+                        return;
+                    }
                     
-                    // Load categories and slots, then load assets
-                    await this.loadCategoriesAndSlots();
-                    await this.loadSlots();
+                    if (user) {
+                        // Check if user email is from cloudwalk.io domain
+                        if (!user.email || !user.email.endsWith('@cloudwalk.io')) {
+                            await this.supabase.auth.signOut();
+                            this.showError('Access restricted to @cloudwalk.io domain users only');
+                            this.showSignInButton();
+                            return;
+                        }
+                        
+                        console.log('🔐 User authenticated:', user.email);
+                        this.user = user;
+                        this.showUserInfo(user);
+                        this.showMainContent();
+                        
+                        try {
+                            // Show loading with progress updates
+                            this.showAuthLoading('🔐 Authentication verified, loading data...');
+                            
+                            // Shorter initial wait since we have better auth checking
+                            console.log('🔐 Initial auth check successful, brief wait before loading...');
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            
+                            // Update loading message
+                            this.showAuthLoading('🔍 Diagnosing database and loading data...');
+                            
+                            // Load categories and slots with diagnostic approach
+                            await this.loadCategoriesAndSlots();
+                            
+                            // Update loading message  
+                            this.showAuthLoading('🎰 Setting up your workspace...');
+                            await this.loadSlots();
+                            
+                            // Set current category after loading
+                            this.setDefaultCurrentCategory();
+                            
+                        } catch (loadError) {
+                            console.error('❌ Error during initial data loading:', loadError);
+                            this.showError('Failed to load initial data');
+                        }
+                        
+                    } else {
+                        console.log('🔐 No user found, showing sign in');
+                        this.showSignInButton();
+                    }
                     
-                    // Set current category after loading
-                    this.setDefaultCurrentCategory();
-                } else {
+                } catch (error) {
+                    console.error('❌ Error in checkAuth:', error);
+                    this.showError('Authentication check failed');
                     this.showSignInButton();
+                } finally {
+                    this.hideAuthLoading();
                 }
-                
-                this.hideAuthLoading();
             }
 
             showUserInfo(user) {
@@ -1254,128 +1312,682 @@
                 document.getElementById('mainContent').style.display = 'block';
             }
 
+            showAuthLoading(message = 'Loading...') {
+                const loadingDiv = document.getElementById('authLoading');
+                loadingDiv.style.display = 'block';
+                
+                // Find or create loading message element
+                let messageDiv = loadingDiv.querySelector('.loading-message');
+                if (!messageDiv) {
+                    messageDiv = document.createElement('div');
+                    messageDiv.className = 'loading-message mt-2';
+                    messageDiv.style.cssText = 'font-size: 0.9em; color: #6c757d; text-align: center;';
+                    loadingDiv.appendChild(messageDiv);
+                }
+                
+                messageDiv.textContent = message;
+                console.log('🔄 Loading state:', message);
+            }
+
             hideAuthLoading() {
                 document.getElementById('authLoading').style.display = 'none';
             }
 
             async loadCategoriesAndSlots() {
                 try {
-                    console.log('Loading categories and slots from database...');
+                    console.log('📊 Loading categories and slots from database...');
                     
-                    // FIRST: Ensure authentication is fully ready
-                    await this.ensureAuthReady();
+                    // FIRST: Run comprehensive diagnostics to identify actual issues
+                    console.log('🔍 Running database diagnostics...');
+                    const diagnostics = await this.runDatabaseDiagnostics();
                     
-                    // TEMPORARY: Skip database entirely for testing
-                    if (window.location.hash === '#skip-db') {
-                        console.log('🚨 SKIPPING DATABASE - Testing hardcoded mode');
-                        this.useHardcodedCategories();
-                        return;
+                    if (!diagnostics.success) {
+                        console.error('❌ Database diagnostics failed:', diagnostics.issues);
+                        throw new Error(`Database issues found: ${diagnostics.issues.join(', ')}`);
                     }
                     
-                    // Add timeout to prevent infinite hanging  
-                    const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => {
-                            console.log('⏰ Database query TIMED OUT after 15 seconds');
-                            reject(new Error('Database query timeout'));
-                        }, 15000); // 15 second timeout
-                    });
+                    console.log('✅ Database diagnostics passed, proceeding with optimized queries...');
                     
-                    // Try SIMPLER direct table queries instead of complex view
-                    console.log('🔍 Attempting categories query...');
-                    console.log('🔍 Supabase client ready:', !!this.supabase);
-                    console.log('🔍 User session:', this.user?.email);
-                    
-                    // Test with the most basic query possible
-                    console.log('🔍 Starting database query...');
-                    const queryPromise = this.supabase
-                        .from('categories')
-                        .select('id, name, display_name')
-                        .limit(5);
-                    
-                    console.log('🔍 Query created, awaiting response...');
-                    const { data: categoriesData, error: categoriesError } = await Promise.race([queryPromise, timeoutPromise]);
-                    console.log('🔍 Query completed! Data:', categoriesData, 'Error:', categoriesError);
-                    
-                    if (categoriesError) {
-                        console.log('❌ Categories query error:', categoriesError);
-                        
-                        // Try a basic connectivity test
-                        console.log('🔍 Testing basic database connectivity...');
-                        try {
-                            const { data: testData, error: testError } = await this.supabase
-                                .from('slot_assets')
-                                .select('id')
-                                .limit(1);
-                            
-                            console.log('🔍 Basic connectivity test result:', testData, testError);
-                            
-                            if (testError) {
-                                console.log('❌ Basic connectivity failed:', testError);
-                                throw new Error(`Database connection failed: ${testError.message}`);
-                            } else {
-                                console.log('✅ Basic connectivity works, but categories table has issues');
-                            }
-                        } catch (connectError) {
-                            console.log('❌ Connectivity test failed:', connectError);
-                        }
-                        
-                        // If it's an auth error, try again after a delay
-                        if (categoriesError.message?.includes('auth') || categoriesError.code === 'PGRST301') {
-                            console.log('Auth error detected, retrying in 2 seconds...');
-                            await new Promise(resolve => setTimeout(resolve, 2000));
-                            return this.loadCategoriesAndSlots(); // Retry once
-                        }
-                        
-                        throw categoriesError;
-                    }
-                    
-                    if (categoriesData && categoriesData.length > 0) {
-                        // Categories found - now get their slots
-                        console.log('Categories found, loading slots...');
-                        await this.loadCategoriesWithSlots(categoriesData);
-                    } else {
-                        console.log('No categories found, falling back to hardcoded categories');
-                        this.useHardcodedCategories();
-                    }
+                    // Use the optimal query strategy based on diagnostics
+                    return await this.loadWithOptimalStrategy(diagnostics.strategy);
                     
                 } catch (error) {
-                    console.error('Error loading dynamic categories, falling back to hardcoded:', error);
-                    this.showError('Database connection issue, using offline mode - will retry in background');
-                    // Use hardcoded categories as fallback
-                    this.useHardcodedCategories();
+                    console.error('❌ Database diagnostics or loading failed:', error);
                     
-                    // Retry in background after 5 seconds
-                    setTimeout(async () => {
-                        console.log('Background retry attempt...');
-                        try {
-                            await this.loadCategoriesAndSlots();
-                            // If successful, re-render
-                            this.renderCategories();
-                            this.showSuccess('✅ Database connection restored! Dynamic features now active.');
-                        } catch (retryError) {
-                            console.log('Background retry failed:', retryError);
-                        }
-                    }, 5000);
+                    // Provide specific error information based on what we found
+                    let errorMessage = 'Database connection issue detected.';
+                    let technicalDetails = error.message;
+                    
+                    if (error.message.includes('not found or not accessible')) {
+                        errorMessage = 'Database tables are missing or not accessible. Please check your database setup.';
+                    } else if (error.message.includes('Schema')) {
+                        errorMessage = 'Database schema mismatch detected. Table structure may have changed.';
+                    } else if (error.message.includes('No categories found')) {
+                        errorMessage = 'Database is accessible but contains no data. Please populate the categories table.';
+                    } else if (error.message.includes('Authentication failed')) {
+                        errorMessage = 'Authentication required for database access. Please refresh to re-authenticate.';
+                    } else if (error.message.includes('Connectivity')) {
+                        errorMessage = 'Cannot connect to database server. Please check your internet connection.';
+                    }
+                    
+                    this.showError(`${errorMessage} Technical details: ${technicalDetails}`);
+                    
+                    // Show detailed connection failure UI with diagnostic info
+                    this.showConnectionFailure(error);
+                    
+                    // Only do background retries for connectivity issues, not schema problems
+                    if (error.message.includes('Connectivity') || error.message.includes('timeout')) {
+                        this.scheduleBackgroundRetry();
+                    }
+                }
+            }
+            
+            showConnectionFailure(error) {
+                // Create a prominent diagnostic failure UI
+                const errorContainer = document.getElementById('mainContent');
+                if (errorContainer) {
+                    const failureDiv = document.createElement('div');
+                    failureDiv.className = 'alert alert-danger text-center mt-4';
+                    
+                    let issueType = 'Connection';
+                    let description = 'Unable to connect to the database for the shared asset manager.';
+                    let guidance = 'This prevents accessing the latest shared data from your team.';
+                    let showRetry = true;
+                    
+                    if (error.message.includes('not found or not accessible')) {
+                        issueType = 'Database Setup';
+                        description = 'Required database tables are missing or not accessible.';
+                        guidance = 'Please check with your database administrator that tables "categories" and "category_slots" exist and are accessible.';
+                        showRetry = false;
+                    } else if (error.message.includes('Schema')) {
+                        issueType = 'Schema Mismatch';
+                        description = 'Database table structure doesn\'t match what the application expects.';
+                        guidance = 'This usually happens after database updates. Please contact your administrator.';
+                        showRetry = false;
+                    } else if (error.message.includes('No categories found')) {
+                        issueType = 'Empty Database';
+                        description = 'Database is accessible but contains no category data.';
+                        guidance = 'Please populate the categories table with your asset categories.';
+                        showRetry = false;
+                    } else if (error.message.includes('is_active')) {
+                        issueType = 'Column Missing';
+                        description = 'Database is missing expected "is_active" columns.';
+                        guidance = 'The diagnostics will automatically use a compatible query format.';
+                        showRetry = true;
+                    }
+                    
+                    let buttons = '';
+                    if (showRetry) {
+                        buttons = `
+                            <button class="btn btn-primary me-2" onclick="window.location.reload()">
+                                🔄 Refresh Page
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="assetManager.forceRetryConnection()">
+                                🔌 Retry Connection
+                            </button>
+                        `;
+                    } else {
+                        buttons = `
+                            <button class="btn btn-secondary me-2" onclick="window.location.reload()">
+                                🔄 Refresh Page
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="console.log('Diagnostic details:', '${error.message}')">
+                                📋 Show Technical Details
+                            </button>
+                        `;
+                    }
+                    
+                    failureDiv.innerHTML = `
+                        <h4>⚠️ ${issueType} Issue Detected</h4>
+                        <p><strong>${description}</strong></p>
+                        <p>${guidance}</p>
+                        <div class="mt-3">
+                            ${buttons}
+                        </div>
+                        <details class="mt-3 text-start">
+                            <summary class="text-muted" style="cursor: pointer;">Technical Details</summary>
+                            <pre class="mt-2 p-2 bg-light border rounded text-start" style="font-size: 0.8em;">${error.message}</pre>
+                        </details>
+                        ${showRetry ? '<small class="text-muted d-block mt-2">Automatic reconnection attempts in progress...</small>' : ''}
+                    `;
+                    
+                    // Insert at the top of main content
+                    errorContainer.insertBefore(failureDiv, errorContainer.firstChild);
+                }
+            }
+            
+            async forceRetryConnection() {
+                console.log('🔄 User requested force retry of connection...');
+                
+                // Remove any existing failure UI
+                const existingFailure = document.querySelector('.alert-danger, .alert-warning');
+                if (existingFailure) {
+                    existingFailure.remove();
+                }
+                
+                // Show loading and try again with full diagnostics
+                this.showAuthLoading('🔄 Running diagnostics and attempting reconnection...');
+                
+                try {
+                    await this.loadCategoriesAndSlots();
+                    this.showSuccess('✅ Successfully reconnected to database! All systems operational.');
+                    this.hideAuthLoading();
+                } catch (error) {
+                    console.error('❌ Force retry with diagnostics failed:', error);
+                    this.hideAuthLoading();
+                    
+                    // Show specific error based on diagnostic results
+                    if (error.message.includes('Database issues found:')) {
+                        this.showError('Diagnostics identified specific database issues. Please see details below.');
+                    } else {
+                        this.showError('Reconnection failed after running diagnostics. Please check your internet connection and try refreshing the page.');
+                    }
+                    
+                    this.showConnectionFailure(error);
                 }
             }
 
+            scheduleBackgroundRetry(retryCount = 0) {
+                const maxBackgroundRetries = 8; // More attempts for shared experience
+                if (retryCount >= maxBackgroundRetries) {
+                    console.log('❌ Maximum background retries reached - user should refresh');
+                    this.showError('Persistent connection issues. Please refresh the page or check your internet connection.');
+                    return;
+                }
+                
+                // More frequent retries: 5s, 10s, 15s, 20s, 30s, 45s, 60s, 90s
+                const backoffDelay = Math.min(5000 + (retryCount * 5000), 90000);
+                console.log(`🔄 Background reconnection attempt #${retryCount + 1} in ${backoffDelay/1000} seconds`);
+                
+                setTimeout(async () => {
+                    console.log(`🔄 Background reconnection attempt #${retryCount + 1}...`);
+                    try {
+                        await this.loadCategoriesAndSlots();
+                        
+                        // Remove connection failure UI if present
+                        const failureDiv = document.querySelector('.alert-warning');
+                        if (failureDiv) {
+                            failureDiv.remove();
+                        }
+                        
+                        // Re-render with fresh data and notify user
+                        this.renderCategories();
+                        this.showSuccess('✅ Database connection restored! You now have access to the latest shared data.');
+                        
+                    } catch (retryError) {
+                        console.log(`❌ Background retry #${retryCount + 1} failed:`, retryError);
+                        // Schedule next retry
+                        this.scheduleBackgroundRetry(retryCount + 1);
+                    }
+                }, backoffDelay);
+            }
+
+            async runDatabaseDiagnostics() {
+                console.log('🔍 Starting comprehensive database diagnostics...');
+                const issues = [];
+                let strategy = 'unknown';
+                
+                try {
+                    // 1. Test basic connectivity
+                    console.log('🔍 Testing basic database connectivity...');
+                    const connectTest = await this.testDatabaseConnectivity();
+                    if (!connectTest.success) {
+                        issues.push(`Connectivity: ${connectTest.error}`);
+                        return { success: false, issues, strategy };
+                    }
+                    
+                    // 2. Test table existence and permissions
+                    console.log('🔍 Testing table existence and permissions...');
+                    const tablesTest = await this.testRequiredTables();
+                    if (!tablesTest.success) {
+                        issues.push(`Tables: ${tablesTest.error}`);
+                        return { success: false, issues, strategy };
+                    }
+                    
+                    // 3. Test column schema
+                    console.log('🔍 Testing column schema...');
+                    const schemaTest = await this.testTableSchema();
+                    if (!schemaTest.success) {
+                        issues.push(`Schema: ${schemaTest.error}`);
+                        strategy = schemaTest.recommendedStrategy || 'fallback';
+                    } else {
+                        strategy = schemaTest.optimalStrategy || 'full';
+                    }
+                    
+                    // 4. Test sample data
+                    console.log('🔍 Testing sample data availability...');
+                    const dataTest = await this.testSampleData(strategy);
+                    if (!dataTest.success) {
+                        issues.push(`Data: ${dataTest.error}`);
+                    }
+                    
+                    console.log('🔍 Diagnostics complete:', { 
+                        issues: issues.length, 
+                        strategy,
+                        hasData: dataTest.success 
+                    });
+                    
+                    return { 
+                        success: issues.length === 0, 
+                        issues, 
+                        strategy,
+                        hasData: dataTest.success 
+                    };
+                    
+                } catch (error) {
+                    console.error('🔍 Diagnostics crashed:', error);
+                    issues.push(`Diagnostics failed: ${error.message}`);
+                    return { success: false, issues, strategy: 'emergency' };
+                }
+            }
+            
+            async testDatabaseConnectivity() {
+                try {
+                    // Test with simplest possible query
+                    const { data, error } = await Promise.race([
+                        this.supabase.from('slot_assets').select('id').limit(1),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Connection timeout')), 5000)
+                        )
+                    ]);
+                    
+                    if (error) {
+                        return { 
+                            success: false, 
+                            error: `${error.code || 'UNKNOWN'}: ${error.message}` 
+                        };
+                    }
+                    
+                    return { success: true, hasData: Array.isArray(data) && data.length > 0 };
+                    
+                } catch (error) {
+                    return { 
+                        success: false, 
+                        error: error.message || 'Connection failed' 
+                    };
+                }
+            }
+            
+            async testRequiredTables() {
+                const requiredTables = ['categories', 'category_slots', 'slot_assets'];
+                const results = {};
+                
+                for (const table of requiredTables) {
+                    try {
+                        const { data, error } = await this.supabase
+                            .from(table)
+                            .select('*')
+                            .limit(1);
+                        
+                        results[table] = {
+                            exists: !error,
+                            accessible: !error || !error.message?.includes('permission'),
+                            error: error?.message,
+                            hasData: Array.isArray(data) && data.length > 0
+                        };
+                        
+                    } catch (error) {
+                        results[table] = {
+                            exists: false,
+                            accessible: false,
+                            error: error.message
+                        };
+                    }
+                }
+                
+                // Check if we have the minimum required tables
+                if (!results.categories?.exists) {
+                    return { 
+                        success: false, 
+                        error: 'categories table not found or not accessible',
+                        results 
+                    };
+                }
+                
+                if (!results.category_slots?.exists) {
+                    return { 
+                        success: false, 
+                        error: 'category_slots table not found or not accessible',
+                        results 
+                    };
+                }
+                
+                return { success: true, results };
+            }
+            
+            async testTableSchema() {
+                try {
+                    // Test if categories table has expected columns including is_active
+                    const { data: catData, error: catError } = await this.supabase
+                        .from('categories')
+                        .select('id, name, display_name, color, bg_class, sort_order, is_active')
+                        .limit(1);
+                    
+                    // Test if category_slots table has expected columns including is_active
+                    const { data: slotData, error: slotError } = await this.supabase
+                        .from('category_slots')
+                        .select('id, category_id, slot_name, display_name, sort_order, is_active')
+                        .limit(1);
+                    
+                    // Determine optimal strategy based on what works
+                    if (!catError && !slotError) {
+                        return { 
+                            success: true, 
+                            optimalStrategy: 'full_with_active_filter',
+                            message: 'All columns including is_active exist'
+                        };
+                    }
+                    
+                    // Try without is_active filter
+                    const { data: catDataNoActive, error: catErrorNoActive } = await this.supabase
+                        .from('categories')
+                        .select('id, name, display_name, color, bg_class, sort_order')
+                        .limit(1);
+                    
+                    const { data: slotDataNoActive, error: slotErrorNoActive } = await this.supabase
+                        .from('category_slots')
+                        .select('id, category_id, slot_name, display_name, sort_order')
+                        .limit(1);
+                    
+                    if (!catErrorNoActive && !slotErrorNoActive) {
+                        return { 
+                            success: true, 
+                            optimalStrategy: 'full_no_active_filter',
+                            message: 'Schema exists but is_active column missing'
+                        };
+                    }
+                    
+                    // Try basic select all
+                    const { data: basicCat, error: basicCatError } = await this.supabase
+                        .from('categories')
+                        .select('*')
+                        .limit(1);
+                    
+                    if (!basicCatError) {
+                        return { 
+                            success: true, 
+                            optimalStrategy: 'basic_select_all',
+                            message: 'Tables exist but column structure unknown'
+                        };
+                    }
+                    
+                    return { 
+                        success: false, 
+                        error: 'Cannot determine table schema',
+                        recommendedStrategy: 'emergency'
+                    };
+                    
+                } catch (error) {
+                    return { 
+                        success: false, 
+                        error: `Schema test failed: ${error.message}`,
+                        recommendedStrategy: 'emergency'
+                    };
+                }
+            }
+            
+            async testSampleData(strategy) {
+                try {
+                    let categoriesQuery, slotsQuery;
+                    
+                    switch (strategy) {
+                        case 'full_with_active_filter':
+                            categoriesQuery = this.supabase
+                                .from('categories')
+                                .select('id, name, display_name, color, bg_class, sort_order')
+                                .eq('is_active', true)
+                                .limit(5);
+                            break;
+                            
+                        case 'full_no_active_filter':
+                            categoriesQuery = this.supabase
+                                .from('categories')
+                                .select('id, name, display_name, color, bg_class, sort_order')
+                                .limit(5);
+                            break;
+                            
+                        case 'basic_select_all':
+                        default:
+                            categoriesQuery = this.supabase
+                                .from('categories')
+                                .select('*')
+                                .limit(5);
+                            break;
+                    }
+                    
+                    const { data: categories, error: catError } = await categoriesQuery;
+                    
+                    if (catError) {
+                        return { success: false, error: `Categories query failed: ${catError.message}` };
+                    }
+                    
+                    if (!categories || categories.length === 0) {
+                        return { success: false, error: 'No categories found in database' };
+                    }
+                    
+                    return { 
+                        success: true, 
+                        categoryCount: categories.length,
+                        sampleCategory: categories[0]
+                    };
+                    
+                } catch (error) {
+                    return { 
+                        success: false, 
+                        error: `Sample data test failed: ${error.message}`
+                    };
+                }
+            }
+            
+            async loadWithOptimalStrategy(strategy) {
+                console.log(`📊 Loading data using strategy: ${strategy}`);
+                
+                switch (strategy) {
+                    case 'full_with_active_filter':
+                        return await this.loadDataWithActiveFilter();
+                        
+                    case 'full_no_active_filter':
+                        return await this.loadDataWithoutActiveFilter();
+                        
+                    case 'basic_select_all':
+                        return await this.loadDataBasicSelectAll();
+                        
+                    default:
+                        throw new Error(`Unknown loading strategy: ${strategy}`);
+                }
+            }
+            
+            async loadDataWithActiveFilter() {
+                console.log('📊 Loading with is_active filtering...');
+                
+                const { data: categoriesData, error: categoriesError } = await this.supabase
+                    .from('categories')
+                    .select('id, name, display_name, color, bg_class, sort_order')
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true });
+                
+                if (categoriesError) throw categoriesError;
+                
+                if (!categoriesData || categoriesData.length === 0) {
+                    throw new Error('No active categories found');
+                }
+                
+                const { data: slotsData, error: slotsError } = await this.supabase
+                    .from('category_slots')
+                    .select('id, category_id, slot_name, display_name, sort_order')
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true });
+                
+                if (slotsError) throw slotsError;
+                
+                return this.processLoadedData(categoriesData, slotsData);
+            }
+            
+            async loadDataWithoutActiveFilter() {
+                console.log('📊 Loading without is_active filtering...');
+                
+                const { data: categoriesData, error: categoriesError } = await this.supabase
+                    .from('categories')
+                    .select('id, name, display_name, color, bg_class, sort_order')
+                    .order('sort_order', { ascending: true });
+                
+                if (categoriesError) throw categoriesError;
+                
+                if (!categoriesData || categoriesData.length === 0) {
+                    throw new Error('No categories found');
+                }
+                
+                const { data: slotsData, error: slotsError } = await this.supabase
+                    .from('category_slots')
+                    .select('id, category_id, slot_name, display_name, sort_order')
+                    .order('sort_order', { ascending: true });
+                
+                if (slotsError) throw slotsError;
+                
+                return this.processLoadedData(categoriesData, slotsData);
+            }
+            
+            async loadDataBasicSelectAll() {
+                console.log('📊 Loading with basic select all...');
+                
+                const { data: categoriesData, error: categoriesError } = await this.supabase
+                    .from('categories')
+                    .select('*')
+                    .order('sort_order', { ascending: true });
+                
+                if (categoriesError) throw categoriesError;
+                
+                if (!categoriesData || categoriesData.length === 0) {
+                    throw new Error('No categories found');
+                }
+                
+                const { data: slotsData, error: slotsError } = await this.supabase
+                    .from('category_slots')
+                    .select('*')
+                    .order('sort_order', { ascending: true });
+                
+                if (slotsError) throw slotsError;
+                
+                return this.processLoadedData(categoriesData, slotsData);
+            }
+            
+            processLoadedData(categoriesData, slotsData) {
+                console.log(`✅ Processing ${categoriesData.length} categories and ${slotsData?.length || 0} slots`);
+                
+                // Reset data structures
+                this.categories = [];
+                this.categorySlots = {};
+                CATEGORIES = {};
+                
+                let totalProcessedSlots = 0;
+                
+                categoriesData.forEach(category => {
+                    // Get slots for this category
+                    const categorySlots = slotsData ? slotsData.filter(slot => slot.category_id === category.id) : [];
+                    totalProcessedSlots += categorySlots.length;
+                    
+                    const categoryInfo = {
+                        id: category.id,
+                        name: category.name,
+                        display_name: category.display_name,
+                        color: category.color || '#6c757d',
+                        bg_class: category.bg_class || '',
+                        sort_order: category.sort_order || 0,
+                        slots: categorySlots.map(slot => ({
+                            id: slot.id,
+                            slot_name: slot.slot_name,
+                            display_name: slot.display_name,
+                            sort_order: slot.sort_order || 0
+                        }))
+                    };
+                    
+                    this.categories.push(categoryInfo);
+                    this.categorySlots[category.id] = categoryInfo.slots;
+                    
+                    // Build CATEGORIES lookup
+                    if (categoryInfo.slots.length > 0) {
+                        CATEGORIES[category.display_name] = categoryInfo.slots.map(slot => 
+                            `${category.name}_${slot.slot_name}`
+                        );
+                    }
+                });
+                
+                console.log(`✅ Successfully processed ${this.categories.length} categories with ${totalProcessedSlots} total slots`);
+                
+                if (this.categories.length === 0) {
+                    throw new Error('No categories were processed');
+                }
+                
+                return true;
+            }
+
             async ensureAuthReady() {
+                console.log('🔐 Ensuring authentication is ready...');
+                
                 // Wait for auth to be fully initialized
                 if (!this.user) {
                     console.log('No user found, waiting for auth...');
-                    return;
+                    return false;
                 }
                 
-                // Check if we can access user session
-                const { data: { session }, error } = await this.supabase.auth.getSession();
+                let retries = 0;
+                const maxRetries = 15; // More aggressive auth checking for shared experience
                 
-                if (!session) {
-                    console.log('No session found, auth may not be ready');
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-                    return;
+                while (retries < maxRetries) {
+                    try {
+                        // Check if we can access user session
+                        const { data: { session }, error } = await this.supabase.auth.getSession();
+                        
+                        if (error) {
+                            console.log(`🔐 Auth error (attempt ${retries + 1}):`, error);
+                            if (retries >= maxRetries - 1) {
+                                throw new Error(`Authentication failed after ${maxRetries} attempts: ${error.message}`);
+                            }
+                            await new Promise(resolve => setTimeout(resolve, 300 * (retries + 1))); // Faster backoff for shared experience
+                            retries++;
+                            continue;
+                        }
+                        
+                        if (!session) {
+                            console.log(`🔐 No session found (attempt ${retries + 1}), waiting...`);
+                            if (retries >= maxRetries - 1) {
+                                throw new Error(`No session found after ${maxRetries} attempts`);
+                            }
+                            await new Promise(resolve => setTimeout(resolve, 300 * (retries + 1))); // Faster backoff for shared experience
+                            retries++;
+                            continue;
+                        }
+                        
+                        // Verify session is actually valid by making a test request
+                        const { data: testData, error: testError } = await this.supabase
+                            .from('slot_assets')
+                            .select('id')
+                            .limit(1);
+                        
+                        if (testError && (testError.message?.includes('auth') || testError.code === 'PGRST301')) {
+                            console.log(`🔐 Auth test failed (attempt ${retries + 1}):`, testError);
+                            if (retries >= maxRetries - 1) {
+                                throw new Error(`Authentication test failed after ${maxRetries} attempts: ${testError.message}`);
+                            }
+                            await new Promise(resolve => setTimeout(resolve, 300 * (retries + 1))); // Faster backoff for shared experience
+                            retries++;
+                            continue;
+                        }
+                        
+                        console.log('🔐 Auth ready, user:', session.user.email);
+                        return true;
+                        
+                    } catch (error) {
+                        console.error(`🔐 Auth check error (attempt ${retries + 1}):`, error);
+                        if (retries >= maxRetries - 1) {
+                            throw error;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 500 * (retries + 1))); // Progressive backoff
+                        retries++;
+                    }
                 }
                 
-                console.log('Auth ready, user:', session.user.email);
+                return false;
             }
 
             async loadFromDirectTables() {
@@ -1443,30 +2055,45 @@
 
             async loadCategoriesWithSlots(categoriesData) {
                 try {
-                    console.log('Loading slots for', categoriesData.length, 'categories');
+                    console.log('🎰 Loading slots for', categoriesData.length, 'categories');
                     
-                    // Load all slots for these categories
-                    const { data: slotsData, error: slotsError } = await this.supabase
+                    // Create timeout promise for slots query
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => {
+                            console.log('⏰ Slots query TIMED OUT after 8 seconds');
+                            reject(new Error('Slots query timeout'));
+                        }, 8000); // 8 second timeout for slots
+                    });
+                    
+                    // Load all slots for these categories with timeout
+                    const slotsQueryPromise = this.supabase
                         .from('category_slots')
-                        .select('*')
+                        .select('id, category_id, slot_name, display_name, sort_order, is_active')
                         .eq('is_active', true)
-                        .order('sort_order', { ascending: true });
+                        .order('sort_order', { ascending: true })
+                        .limit(500); // Reasonable limit
+                    
+                    console.log('🎰 Querying slots...');
+                    const { data: slotsData, error: slotsError } = await Promise.race([slotsQueryPromise, timeoutPromise]);
                     
                     if (slotsError) {
-                        console.error('Error loading slots:', slotsError);
+                        console.error('❌ Error loading slots:', slotsError);
                         throw slotsError;
                     }
                     
-                    console.log('Found', slotsData?.length || 0, 'slots');
+                    console.log('✅ Found', slotsData?.length || 0, 'slots');
                     
                     // Process the data
                     this.categories = [];
                     this.categorySlots = {};
                     CATEGORIES = {};
                     
+                    let totalProcessedSlots = 0;
+                    
                     categoriesData.forEach(category => {
                         // Get slots for this category
                         const categorySlots = slotsData.filter(slot => slot.category_id === category.id);
+                        totalProcessedSlots += categorySlots.length;
                         
                         const categoryInfo = {
                             id: category.id,
@@ -1485,16 +2112,27 @@
                         
                         this.categories.push(categoryInfo);
                         this.categorySlots[category.id] = categoryInfo.slots;
-                        CATEGORIES[category.display_name] = categoryInfo.slots.map(slot => 
-                            `${category.name}_${slot.slot_name}`
-                        );
+                        
+                        // Build CATEGORIES lookup
+                        if (categoryInfo.slots.length > 0) {
+                            CATEGORIES[category.display_name] = categoryInfo.slots.map(slot => 
+                                `${category.name}_${slot.slot_name}`
+                            );
+                        }
                     });
                     
-                    console.log('Successfully loaded dynamic categories:', this.categories);
+                    console.log(`✅ Successfully processed ${this.categories.length} categories with ${totalProcessedSlots} total slots`);
+                    console.log('📋 Categories structure:', this.categories.map(c => `${c.display_name} (${c.slots.length} slots)`));
+                    
+                    // Validate the data structure
+                    if (this.categories.length === 0) {
+                        throw new Error('No categories were processed');
+                    }
                     
                 } catch (error) {
-                    console.error('Error in loadCategoriesWithSlots:', error);
-                    throw error;
+                    console.error('❌ Error in loadCategoriesWithSlots:', error);
+                    // Provide more context in the error
+                    throw new Error(`Failed to load category slots: ${error.message}`);
                 }
             }
 
@@ -1556,59 +2194,122 @@
             }
 
             useHardcodedCategories() {
-                console.log('Using hardcoded categories (offline mode with dynamic UI)');
+                console.log('💾 Initializing hardcoded categories (offline mode with dynamic UI)');
                 
-                // All 13 slots based on video file names
-                const ALL_SLOTS = [
-                    'checkout', 'create_bill', 'dirf', 'infinite_card',
-                    'infinite_cash_can_request_limit', 'infinite_cash',
-                    'instant_settlement', 'pay_bill', 'piselli', 'pix_credit',
-                    'referral', 'supercobra', 'tap'
-                ];
+                try {
+                    // All 13 slots based on video file names
+                    const ALL_SLOTS = [
+                        'checkout', 'create_bill', 'dirf', 'infinite_card',
+                        'infinite_cash_can_request_limit', 'infinite_cash',
+                        'instant_settlement', 'pay_bill', 'piselli', 'pix_credit',
+                        'referral', 'supercobra', 'tap'
+                    ];
 
-                // Hardcoded categories with legacy structure
-                const hardcodedCategories = {
-                    'AI Images': { name: 'ai_images', color: '#667eea', bg_class: '' },
-                    '3D Images': { name: '3d_images', color: '#28a745', bg_class: 'mcc-mercadinho' },
-                    'Real Footage': { name: 'real_footage', color: '#ffc107', bg_class: 'mcc-roupa' },
-                    'Mercadinho': { name: 'mercadinho', color: '#28a745', bg_class: 'mcc-mercadinho' },
-                    'Loja de Roupa': { name: 'loja_de_roupa', color: '#ffc107', bg_class: 'mcc-roupa' },
-                    'Sala Beleza/Barbearia': { name: 'sala_beleza_barbearia', color: '#dc3545', bg_class: 'mcc-beleza' }
-                };
+                    // Hardcoded categories with enhanced structure
+                    const hardcodedCategories = {
+                        'AI Images': { name: 'ai_images', color: '#667eea', bg_class: '', description: 'AI-generated creative content' },
+                        '3D Images': { name: '3d_images', color: '#28a745', bg_class: 'mcc-mercadinho', description: '3D rendered visuals' },
+                        'Real Footage': { name: 'real_footage', color: '#ffc107', bg_class: 'mcc-roupa', description: 'Real video footage' },
+                        'Mercadinho': { name: 'mercadinho', color: '#28a745', bg_class: 'mcc-mercadinho', description: 'Convenience store content' },
+                        'Loja de Roupa': { name: 'loja_de_roupa', color: '#ffc107', bg_class: 'mcc-roupa', description: 'Clothing store content' },
+                        'Sala Beleza/Barbearia': { name: 'sala_beleza_barbearia', color: '#dc3545', bg_class: 'mcc-beleza', description: 'Beauty salon content' }
+                    };
 
-                // Reset data structures
-                this.categories = [];
-                this.categorySlots = {};
-                CATEGORIES = {};
-                
-                // Build categories structure with proper IDs for dynamic features
-                let sortOrder = 1;
-                Object.entries(hardcodedCategories).forEach(([displayName, config]) => {
-                    const categoryInfo = {
-                        id: sortOrder, // Use sort order as ID
-                        name: config.name,
-                        display_name: displayName,
-                        color: config.color,
-                        bg_class: config.bg_class,
-                        sort_order: sortOrder,
-                        slots: ALL_SLOTS.map((slot, index) => ({
-                            id: sortOrder * 100 + index, // Generate unique slot IDs
-                            slot_name: slot,
-                            display_name: slot.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                            sort_order: index + 1
-                        }))
+                    // Safely reset data structures
+                    if (!this.categories) this.categories = [];
+                    if (!this.categorySlots) this.categorySlots = {};
+                    if (typeof CATEGORIES === 'undefined') window.CATEGORIES = {};
+                    
+                    // Clear existing data
+                    this.categories.length = 0;
+                    this.categorySlots = {};
+                    CATEGORIES = {};
+                    
+                    // Build categories structure with proper IDs for dynamic features
+                    let sortOrder = 1;
+                    const processedCategories = [];
+                    
+                    Object.entries(hardcodedCategories).forEach(([displayName, config]) => {
+                        try {
+                            const categoryInfo = {
+                                id: sortOrder,
+                                name: config.name,
+                                display_name: displayName,
+                                color: config.color || '#6c757d', // Default color fallback
+                                bg_class: config.bg_class || '',
+                                sort_order: sortOrder,
+                                description: config.description || '',
+                                is_offline: true, // Mark as offline category
+                                slots: ALL_SLOTS.map((slot, index) => ({
+                                    id: sortOrder * 100 + index,
+                                    slot_name: slot,
+                                    display_name: slot.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                                    sort_order: index + 1,
+                                    is_offline: true
+                                }))
+                            };
+                            
+                            this.categories.push(categoryInfo);
+                            this.categorySlots[categoryInfo.id] = categoryInfo.slots;
+                            CATEGORIES[displayName] = ALL_SLOTS.map(slot => `${config.name}_${slot}`);
+                            processedCategories.push(displayName);
+                            sortOrder++;
+                            
+                        } catch (categoryError) {
+                            console.error(`❌ Error processing category ${displayName}:`, categoryError);
+                        }
+                    });
+                    
+                    // Validate data structure
+                    if (this.categories.length === 0) {
+                        throw new Error('No categories were successfully loaded');
+                    }
+                    
+                    console.log(`💾 Successfully loaded ${this.categories.length} hardcoded categories:`, processedCategories);
+                    console.log('💾 Total slots per category:', ALL_SLOTS.length);
+                    
+                    // Set offline mode flag
+                    this.isOfflineMode = true;
+                    
+                    // Show user-friendly offline mode message
+                    this.showError('💾 Running in offline mode - all core features available! Database will reconnect automatically.');
+                    
+                    // Ensure UI renders correctly
+                    setTimeout(() => {
+                        this.renderCategories();
+                    }, 100);
+                    
+                } catch (error) {
+                    console.error('❌ Critical error in useHardcodedCategories:', error);
+                    
+                    // Last resort fallback - minimal single category
+                    this.categories = [{
+                        id: 1,
+                        name: 'fallback',
+                        display_name: 'Default',
+                        color: '#6c757d',
+                        bg_class: '',
+                        sort_order: 1,
+                        is_offline: true,
+                        slots: [{
+                            id: 101,
+                            slot_name: 'default',
+                            display_name: 'Default Slot',
+                            sort_order: 1,
+                            is_offline: true
+                        }]
+                    }];
+                    
+                    this.categorySlots = {
+                        1: this.categories[0].slots
                     };
                     
-                    this.categories.push(categoryInfo);
-                    this.categorySlots[categoryInfo.id] = categoryInfo.slots;
-                    CATEGORIES[displayName] = ALL_SLOTS.map(slot => `${config.name}_${slot}`);
-                    sortOrder++;
-                });
-                
-                console.log('Hardcoded categories loaded with dynamic UI:', this.categories);
-                
-                // Show offline mode message
-                this.showError('🔌 Working in offline mode - database connection issue. Add Category/Slot features available for testing!');
+                    CATEGORIES = {
+                        'Default': ['fallback_default']
+                    };
+                    
+                    this.showError('⚠️ Minimal offline mode active. Please refresh to retry full functionality.');
+                }
             }
 
             setDefaultCurrentCategory() {
@@ -2745,12 +3446,33 @@
             }
 
             showError(message) {
+                console.error('🚨 Showing error to user:', message);
+                
                 const errorDiv = document.getElementById('errorMessage');
-                errorDiv.textContent = message;
+                
+                // Make error messages focus on connectivity for shared experience
+                let userFriendlyMessage = message;
+                if (message.includes('timeout') || message.includes('TIMED OUT')) {
+                    userFriendlyMessage = '🐌 Database connection is slow. This may affect your ability to see the latest shared data. Retrying...';
+                } else if (message.includes('auth')) {
+                    userFriendlyMessage = '🔐 Authentication issue detected. Please refresh the page to restore your session.';
+                } else if (message.includes('Database connection') || message.includes('Unable to connect')) {
+                    userFriendlyMessage = '🔌 Cannot connect to shared database. Please check your connection and refresh the page.';
+                } else if (message.includes('Failed to load initial data')) {
+                    userFriendlyMessage = '📊 Cannot load shared data from database. Please refresh to try again.';
+                } else if (message.includes('Failed to load data after authentication')) {
+                    userFriendlyMessage = '📊 Authentication successful but data loading failed. Please refresh to access shared content.';
+                } else if (message.includes('multiple attempts')) {
+                    userFriendlyMessage = '🔄 Multiple connection attempts failed. Please refresh the page or check your internet connection.';
+                }
+                
+                errorDiv.textContent = userFriendlyMessage;
                 errorDiv.style.display = 'block';
+                
+                // Longer timeout for better user experience
                 setTimeout(() => {
                     errorDiv.style.display = 'none';
-                }, 5000);
+                }, 8000);
             }
 
             showSuccess(message) {
@@ -2776,6 +3498,10 @@
 
         function uploadAsset(slotName) {
             assetManager.uploadAsset(slotName);
+        }
+        
+        function forceRetryConnection() {
+            assetManager.forceRetryConnection();
         }
 
         function replaceAsset(slotName) {
