@@ -1585,18 +1585,50 @@
                 try {
                     console.log('🔍 Testing connection to:', this.supabase.supabaseUrl);
                     console.log('🔍 Using anon key (first 20 chars):', this.supabase.supabaseKey?.substring(0, 20) + '...');
+                    console.log('🔍 User agent:', navigator.userAgent);
+                    console.log('🔍 Protocol:', window.location.protocol);
+                    console.log('🔍 Current domain:', window.location.hostname);
                     
                     // Quick URL validation
                     if (!this.supabase.supabaseUrl || !this.supabase.supabaseUrl.startsWith('https://')) {
                         throw new Error('Invalid Supabase URL: ' + this.supabase.supabaseUrl);
                     }
                     
-                    // Test with simplest possible query
+                    // Test basic fetch first
+                    console.log('🔍 Testing basic fetch to Supabase...');
+                    try {
+                        const testResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/');
+                        console.log('🔍 Basic fetch result:', testResponse.status, testResponse.statusText);
+                    } catch (fetchError) {
+                        console.log('🔍 Basic fetch failed:', fetchError.message);
+                        throw new Error('Basic fetch failed: ' + fetchError.message);
+                    }
+                    
+                    // Test direct API call without SDK
+                    console.log('🔍 Testing direct API call...');
+                    try {
+                        const apiResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/slot_assets?limit=1', {
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        console.log('🔍 Direct API call result:', apiResponse.status, apiResponse.statusText);
+                        const apiData = await apiResponse.text();
+                        console.log('🔍 Direct API data:', apiData?.substring(0, 100) + '...');
+                    } catch (apiError) {
+                        console.log('🔍 Direct API call failed:', apiError.message);
+                        throw new Error('Direct API failed: ' + apiError.message);
+                    }
+                    
+                    // Test with simplest possible query using SDK
+                    console.log('🔍 Testing Supabase SDK query...');
                     const startTime = Date.now();
                     const { data, error } = await Promise.race([
                         this.supabase.from('slot_assets').select('id').limit(1),
                         new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Connection timeout after 8 seconds')), 8000)
+                            setTimeout(() => reject(new Error('Supabase SDK timeout after 12 seconds')), 12000)
                         )
                     ]);
                     
