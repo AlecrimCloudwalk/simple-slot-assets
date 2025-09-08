@@ -1583,27 +1583,65 @@
             
             async testDatabaseConnectivity() {
                 try {
+                    console.log('🔍 Testing connection to:', this.supabase.supabaseUrl);
+                    console.log('🔍 Using anon key (first 20 chars):', this.supabase.supabaseKey?.substring(0, 20) + '...');
+                    
+                    // Quick URL validation
+                    if (!this.supabase.supabaseUrl || !this.supabase.supabaseUrl.startsWith('https://')) {
+                        throw new Error('Invalid Supabase URL: ' + this.supabase.supabaseUrl);
+                    }
+                    
                     // Test with simplest possible query
+                    const startTime = Date.now();
                     const { data, error } = await Promise.race([
                         this.supabase.from('slot_assets').select('id').limit(1),
                         new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Connection timeout')), 5000)
+                            setTimeout(() => reject(new Error('Connection timeout after 8 seconds')), 8000)
                         )
                     ]);
                     
+                    const duration = Date.now() - startTime;
+                    console.log('🔍 Connection test completed in:', duration + 'ms');
+                    
                     if (error) {
+                        console.log('🔍 Database error details:', {
+                            code: error.code,
+                            message: error.message,
+                            details: error.details,
+                            hint: error.hint
+                        });
+                        
                         return { 
                             success: false, 
-                            error: `${error.code || 'UNKNOWN'}: ${error.message}` 
+                            error: `${error.code || 'UNKNOWN'}: ${error.message}`,
+                            details: error.details,
+                            hint: error.hint
                         };
                     }
                     
+                    console.log('🔍 Connection successful! Data returned:', Array.isArray(data) ? data.length + ' rows' : 'no data');
                     return { success: true, hasData: Array.isArray(data) && data.length > 0 };
                     
                 } catch (error) {
+                    console.log('🔍 Connection test exception:', error);
+                    
+                    let friendlyError = error.message || 'Connection failed';
+                    
+                    // More specific error messages
+                    if (error.message?.includes('timeout')) {
+                        friendlyError = 'Database server not responding (timeout). Check if Supabase URL is correct and service is running.';
+                    } else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+                        friendlyError = 'Network error - cannot reach database server. Check internet connection and Supabase URL.';
+                    } else if (error.message?.includes('CORS')) {
+                        friendlyError = 'CORS error - database may not allow requests from this domain.';
+                    } else if (error.message?.includes('Invalid URL')) {
+                        friendlyError = 'Invalid Supabase URL configured. Please check SUPABASE_URL setting.';
+                    }
+                    
                     return { 
                         success: false, 
-                        error: error.message || 'Connection failed' 
+                        error: friendlyError,
+                        originalError: error.message
                     };
                 }
             }
