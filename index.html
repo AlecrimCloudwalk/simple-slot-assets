@@ -540,7 +540,7 @@
             height: 100%;
             position: relative;
             border-radius: 14px;
-            overflow: hidden;
+            overflow: hidden; /* This container should clip content to stay within bounds */
             max-width: 100%; /* Ensure content doesn't overflow */
             box-sizing: border-box; /* Include padding/borders in width calculation */
         }
@@ -566,7 +566,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            overflow: hidden;
+            /* Removed overflow: hidden - was clipping translated slides */
         }
 
         .carousel-slide-container {
@@ -1589,7 +1589,6 @@
                     const slide = document.createElement('div');
                     slide.className = 'carousel-slide-container';
                     slide.style.width = '100%'; // Each slide takes full width
-                    slide.style.backgroundColor = 'rgba(0,0,0,0.1)'; // Temporary debug background
                     
                     console.log(`Creating slide ${index}:`, asset);
                     
