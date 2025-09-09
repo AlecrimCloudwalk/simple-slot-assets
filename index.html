@@ -1361,6 +1361,7 @@
             constructor() {
                 this.supabase = null;
                 this.user = null;
+                this.session = null; // Store full session for access token
                 this.slots = {};
                 this.categories = [];
                 this.isAuthenticating = false;
@@ -1451,6 +1452,7 @@
                     this.isAuthenticating = true;
                     
                             this.user = session.user;
+                            this.session = session; // Store full session for access token
                             this.showUserInfo(session.user);
                             this.showMainContent();
                             
@@ -3894,7 +3896,7 @@
                             vote_type: voteType
                         };
 
-                        await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_votes`, {
+                        const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_votes`, {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${this.supabase.supabaseKey}`,
@@ -3904,6 +3906,10 @@
                             },
                             body: JSON.stringify(voteData)
                         });
+
+                        if (!response.ok) {
+                            throw new Error(`Failed to vote: ${response.status} ${response.statusText}`);
+                        }
                         console.log(`✅ Added ${voteType} to ${slotName}`);
 
                         // If downvote and no existing vote, prompt for comment
@@ -4027,7 +4033,7 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Failed to add comment: ${response.status}`);
+                        throw new Error(`Failed to add comment: ${response.status} ${response.statusText}`);
                     }
 
                     console.log(`💬 Added comment to ${slotName}:`, comment);
