@@ -1181,14 +1181,14 @@
                                 // Set current category after loading
                                 this.setDefaultCurrentCategory();
                                 
-                                // Auto-refresh after a short delay for better loading
-                                setTimeout(async () => {
-                                    try {
-                                        await this.loadSlots();
-                                    } catch (refreshError) {
-                                        console.log('⚠️ Auto-refresh failed:', refreshError);
-                                    }
-                                }, 3000);
+                                // DISABLED: Auto-refresh to prevent rate limiting
+                                // setTimeout(async () => {
+                                //     try {
+                                //         await this.loadSlots();
+                                //     } catch (refreshError) {
+                                //         console.log('⚠️ Auto-refresh failed:', refreshError);
+                                //     }
+                                // }, 3000);
                                 
                             } catch (loadError) {
                                 console.error('❌ Error during post-auth loading:', loadError);
@@ -1277,31 +1277,8 @@
                         this.showUserInfo(user);
                         this.showMainContent();
                         
-                        try {
-                            // Show loading with progress updates
-                            this.showAuthLoading('🔐 Authentication verified, loading data...');
-                            
-                            // Shorter initial wait since we have better auth checking
-                            console.log('🔐 Initial auth check successful, brief wait before loading...');
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                            
-                            // Update loading message
-                            this.showAuthLoading('🔍 Diagnosing database and loading data...');
-                            
-                            // Load categories and slots with diagnostic approach
-                            await this.loadCategoriesAndSlots();
-                            
-                            // Update loading message  
-                            this.showAuthLoading('🎰 Setting up your workspace...');
-                            await this.loadSlots();
-                            
-                            // Set current category after loading
-                            this.setDefaultCurrentCategory();
-                            
-                        } catch (loadError) {
-                            console.error('❌ Error during initial data loading:', loadError);
-                            this.showError('Failed to load initial data');
-                        }
+                        // Don't load data here - let onAuthStateChange handle it to prevent double loading
+                        console.log('🔐 User authenticated, letting auth state change handler load data...');
                         
                     } else {
                         console.log('🔐 No user found, showing sign in');
@@ -2570,16 +2547,26 @@
             }
 
             setDefaultCurrentCategory() {
-                // Try to restore last selected category from localStorage
-                const savedCategory = localStorage.getItem('cloudwalk-current-category');
-                
-                if (savedCategory && CATEGORIES[savedCategory]) {
-                    this.currentCategory = savedCategory;
-                } else if (this.categories.length > 0) {
-                    // Fallback to first category
-                    this.currentCategory = this.categories[0].display_name;
-                } else {
-                    this.currentCategory = null;
+                try {
+                    // Try to restore last selected category from localStorage
+                    const savedCategory = localStorage.getItem('cloudwalk-current-category');
+                    
+                    if (savedCategory && CATEGORIES[savedCategory]) {
+                        this.currentCategory = savedCategory;
+                    } else if (this.categories.length > 0) {
+                        // Fallback to first category
+                        this.currentCategory = this.categories[0].display_name;
+                    } else {
+                        this.currentCategory = null;
+                    }
+                } catch (storageError) {
+                    console.warn('⚠️ localStorage access failed:', storageError);
+                    // Fallback if localStorage fails
+                    if (this.categories.length > 0) {
+                        this.currentCategory = this.categories[0].display_name;
+                    } else {
+                        this.currentCategory = null;
+                    }
                 }
                 
                 console.log('Set current category to:', this.currentCategory);
@@ -2730,11 +2717,26 @@
                 this.updateStats();
             }
 
+            // Clear browser storage and reset app state (for troubleshooting)
+            clearAppStorage() {
+                try {
+                    localStorage.removeItem('cloudwalk-current-category');
+                    sessionStorage.clear();
+                    console.log('🧹 App storage cleared');
+                } catch (error) {
+                    console.warn('⚠️ Failed to clear storage:', error);
+                }
+            }
+
             switchCategory(categoryName) {
                 this.currentCategory = categoryName;
                 
-                // Save current category to localStorage for persistence
-                localStorage.setItem('cloudwalk-current-category', categoryName);
+                try {
+                    // Save current category to localStorage for persistence
+                    localStorage.setItem('cloudwalk-current-category', categoryName);
+                } catch (storageError) {
+                    console.warn('⚠️ Failed to save category to localStorage:', storageError);
+                }
                 
                 // Update tabs
                 document.querySelectorAll('.category-tab').forEach(tab => {
