@@ -1988,55 +1988,42 @@
                     return this.processLoadedData(categoriesData, slotsData);
                     
                 } catch (sdkError) {
-                    console.log('📊 SDK failed, trying direct API approach...', sdkError.message);
+                    console.log('📊 SDK failed, trying backup SDK approach...', sdkError.message);
                     return await this.loadDataDirectAPI();
                 }
             }
             
             async loadDataDirectAPI() {
-                console.log('📊 Loading data via direct API calls...');
+                console.log('📊 Loading data via SDK (authenticated)...');
                 
-                // Get user's JWT token for authenticated requests
-                const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
-                if (sessionError || !session) {
-                    throw new Error('No authenticated session for API calls');
+                // Use Supabase SDK instead of direct API - it handles auth automatically
+                const { data: categoriesData, error: categoriesError } = await this.supabase
+                    .from('categories')
+                    .select('id, name, display_name, color, bg_class, sort_order')
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true });
+                
+                if (categoriesError) {
+                    throw new Error(`Categories query failed: ${categoriesError.message}`);
                 }
                 
-                // Load categories directly via API with user's JWT token
-                const categoriesResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/categories?is_active=eq.true&order=sort_order.asc&select=id,name,display_name,color,bg_class,sort_order', {
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`,  // ✅ USER JWT TOKEN
-                        'apikey': this.supabase.supabaseKey,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!categoriesResponse.ok) {
-                    throw new Error(`Categories API failed: ${categoriesResponse.status} ${categoriesResponse.statusText}`);
-                }
-                
-                const categoriesData = await categoriesResponse.json();
-                console.log('📊 Categories loaded via API:', categoriesData.length, 'items');
+                console.log('📊 Categories loaded via SDK:', categoriesData ? categoriesData.length : 0, 'items');
                 
                 if (!categoriesData || categoriesData.length === 0) {
-                    throw new Error('No active categories found via API');
+                    throw new Error('No active categories found via SDK');
                 }
                 
-                // Load category slots directly via API with user's JWT token
-                const slotsResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/category_slots?is_active=eq.true&order=sort_order.asc&select=id,category_id,slot_name,display_name,sort_order', {
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`,  // ✅ USER JWT TOKEN
-                        'apikey': this.supabase.supabaseKey,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // Load category slots via SDK
+                const { data: slotsData, error: slotsError } = await this.supabase
+                    .from('category_slots')
+                    .select('id, category_id, slot_name, display_name, sort_order')
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true });
                 
-                if (!slotsResponse.ok) {
-                    throw new Error(`Slots API failed: ${slotsResponse.status} ${slotsResponse.statusText}`);
+                if (slotsError) {
+                    console.warn('📊 Slots query failed, continuing with categories only:', slotsError.message);
                 }
-                
-                const slotsData = await slotsResponse.json();
-                console.log('📊 Slots loaded via API:', slotsData.length, 'items');
+                console.log('📊 Slots loaded via SDK:', slotsData ? slotsData.length : 0, 'items');
                 
                 return this.processLoadedData(categoriesData, slotsData);
             }
