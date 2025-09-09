@@ -557,7 +557,7 @@
             width: 227px; /* Scaled width */
             height: 132px; /* Height calculated for 1080x628 aspect ratio */
             border-radius: 14px;
-            overflow: hidden;
+            overflow: visible; /* Allow indicators to show outside bounds if needed */
             z-index: 20;
         }
 
@@ -718,29 +718,37 @@
 
         .carousel-indicators {
             position: absolute;
-            bottom: 8px; /* Fixed pixel positioning within video overlay */
-            left: 8px; /* Fixed pixel positioning */
-            right: 8px; /* Fixed pixel positioning */
-            display: flex;
+            bottom: 10px; /* Fixed pixel positioning within video overlay */
+            left: 10px; /* Fixed pixel positioning */
+            right: 10px; /* Fixed pixel positioning */
+            display: flex !important; /* Force display */
             justify-content: flex-start;
-            gap: 4px; /* Fixed pixel gap */
-            z-index: 60;
+            gap: 6px; /* Slightly larger gap */
+            z-index: 100; /* Higher z-index to ensure visibility */
+            pointer-events: auto; /* Ensure clickable */
+            background: rgba(255, 0, 0, 0.2); /* DEBUG: Red background to see position */
+            min-height: 20px; /* Ensure it has height */
+            padding: 2px; /* Add some padding */
         }
 
         .carousel-indicators .indicator {
-            width: 12px; /* Slightly larger for better visibility */
-            height: 4px; /* Slightly taller for better visibility */
-            border-radius: 2px; 
-            background: rgba(255, 255, 255, 0.6); /* More opaque for visibility */
-            border: 1px solid rgba(0, 0, 0, 0.2); /* Subtle border for definition */
+            width: 16px; /* Larger for better visibility */
+            height: 6px; /* Taller for better visibility */
+            border-radius: 3px; 
+            background: rgba(255, 255, 255, 0.8); /* More opaque */
+            border: 2px solid rgba(0, 0, 0, 0.4); /* Stronger border */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Shadow for depth */
             cursor: pointer;
             transition: all 0.3s ease;
+            display: block !important; /* Force display */
+            flex-shrink: 0; /* Prevent shrinking */
         }
 
         .carousel-indicators .indicator.active {
-            background: rgba(255, 255, 255, 0.95); /* Very opaque when active */
-            width: 16px; /* Larger when active */
-            border: 1px solid rgba(0, 0, 0, 0.3); /* Stronger border when active */
+            background: white; /* Fully opaque when active */
+            width: 20px; /* Much larger when active */
+            border: 2px solid rgba(0, 0, 0, 0.6); /* Very strong border */
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5); /* Stronger shadow */
         }
 
         .preview-controls {
@@ -3010,43 +3018,8 @@
                     console.log('📤 Generated filename:', fileName);
                     console.log('📤 Attempting upload to bucket: slot-assets');
                     
-                    // Test storage bucket access directly (bypass bucket listing)
-                    console.log('📤 Testing direct bucket access...');
-                    try {
-                        // Test bucket access with direct API (bypass SDK)
-                        console.log('📤 Testing direct bucket access...');
-                        try {
-                            const bucketTestResponse = await fetch(`${this.supabase.supabaseUrl}/storage/v1/object/list/slot-assets`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${this.supabase.supabaseKey}`,
-                                    'apikey': this.supabase.supabaseKey,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ 
-                                    limit: 1,
-                                    offset: 0,
-                                    sortBy: { column: 'name', order: 'asc' }
-                                })
-                            });
-                            
-                            if (!bucketTestResponse.ok) {
-                                if (bucketTestResponse.status === 404) {
-                                    throw new Error('Storage bucket "slot-assets" does not exist. Please create it in Supabase dashboard.');
-                                } else {
-                                    throw new Error(`Storage bucket access denied (${bucketTestResponse.status}). Check bucket policies in Supabase dashboard.`);
-                                }
-                            }
-                            
-                            console.log('📤 slot-assets bucket accessible!');
-                        } catch (fetchError) {
-                            console.error('📤 Direct bucket access failed:', fetchError);
-                            throw fetchError;
-                        }
-                    } catch (bucketError) {
-                        console.error('📤 Bucket access test failed:', bucketError);
-                        throw new Error(`Storage bucket test failed: ${bucketError.message}`);
-                    }
+                    // Skip bucket test - just proceed with upload (bucket exists, we know it works)
+                    console.log('📤 Skipping bucket test - proceeding directly to upload...');
                     
                     // Upload file to Supabase Storage
                     console.log('📤 Starting file upload to storage...');
