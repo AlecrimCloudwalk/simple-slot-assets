@@ -2684,8 +2684,8 @@
                     categoriesDiv.appendChild(tab);
                 });
                 
-                // Add admin button for adding new categories (only if new database structure is available)
-                const isNewStructure = this.categories.length > 0 && this.categories[0].id && this.categorySlots[this.categories[0].id];
+                // Disable admin buttons since we're using predefined categories and slots
+                const isNewStructure = false;
                 if (isNewStructure) {
                     const addCategoryBtn = document.createElement('button');
                     addCategoryBtn.className = 'category-tab add-category-btn';
@@ -3025,8 +3025,9 @@
                         .from('slot-assets')
                         .getPublicUrl(fileName);
                     
-                    // Check if we're using the new database structure or legacy
-                    const isNewStructure = this.categories.length > 0 && this.categories[0].id && this.categorySlots[this.categories[0].id];
+                    // Force legacy structure since we're using predefined slots (not database slots)
+                    // This avoids trying to use synthetic string IDs as integers
+                    const isNewStructure = false;
                     
                     let slotData;
                     let upsertConfig;
