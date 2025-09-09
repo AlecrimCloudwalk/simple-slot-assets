@@ -3012,21 +3012,36 @@
                     // Test storage bucket access directly (bypass bucket listing)
                     console.log('📤 Testing direct bucket access...');
                     try {
-                        // Skip bucket listing (often fails due to permissions) and test direct access
-                        const { data: testFiles, error: testError } = await this.supabase.storage
-                            .from('slot-assets')
-                            .list('', { limit: 1 });
-                        
-                        if (testError) {
-                            console.error('📤 Direct bucket access failed:', testError);
-                            if (testError.message.includes('not found')) {
-                                throw new Error('Storage bucket "slot-assets" does not exist. Please create it in Supabase dashboard.');
-                            } else {
-                                throw new Error(`Storage bucket access denied: ${testError.message}. Check bucket policies in Supabase dashboard.`);
+                        // Test bucket access with direct API (bypass SDK)
+                        console.log('📤 Testing direct bucket access...');
+                        try {
+                            const bucketTestResponse = await fetch(`${this.supabase.supabaseUrl}/storage/v1/object/list/slot-assets`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                    'apikey': this.supabase.supabaseKey,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ 
+                                    limit: 1,
+                                    offset: 0,
+                                    sortBy: { column: 'name', order: 'asc' }
+                                })
+                            });
+                            
+                            if (!bucketTestResponse.ok) {
+                                if (bucketTestResponse.status === 404) {
+                                    throw new Error('Storage bucket "slot-assets" does not exist. Please create it in Supabase dashboard.');
+                                } else {
+                                    throw new Error(`Storage bucket access denied (${bucketTestResponse.status}). Check bucket policies in Supabase dashboard.`);
+                                }
                             }
+                            
+                            console.log('📤 slot-assets bucket accessible!');
+                        } catch (fetchError) {
+                            console.error('📤 Direct bucket access failed:', fetchError);
+                            throw fetchError;
                         }
-                        
-                        console.log('📤 slot-assets bucket accessible!');
                     } catch (bucketError) {
                         console.error('📤 Bucket access test failed:', bucketError);
                         throw new Error(`Storage bucket test failed: ${bucketError.message}`);
@@ -3589,22 +3604,10 @@
             }
 
             setupRealtimeSubscription() {
-                this.supabase
-                    .channel('slot_assets')
-                    .on('postgres_changes', 
-                        { event: '*', schema: 'public', table: 'slot_assets' },
-                        (payload) => {
-                            console.log('Real-time update:', payload);
-                            // Avoid unnecessary reloads by checking if current user made the change
-                            if (payload.new?.uploaded_by !== this.user?.email) {
-                                this.loadSlots(); // Only reload if someone else made changes
-                            } else {
-                                // Just update phone preview without full reload for own changes
-                                this.updatePhonePreview(this.currentCategory);
-                            }
-                        }
-                    )
-                    .subscribe();
+                // DISABLED: Realtime subscriptions use problematic SDK
+                console.log('⚠️ Realtime subscriptions disabled to avoid SDK timeout issues');
+                console.log('💡 App will still work perfectly, just no live updates from other users');
+                // If you need real-time updates, implement polling with direct API calls instead
             }
 
             initPhonePreview() {
