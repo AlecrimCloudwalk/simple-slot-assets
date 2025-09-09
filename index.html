@@ -669,6 +669,7 @@
             opacity: 1 !important;
             pointer-events: none !important;
             background: linear-gradient(transparent, rgba(0,0,0,0.9)) !important;
+            border-radius: 0 0 14px 14px !important; /* Rounded bottom corners to match video overlay */
         }
 
         .video-overlay .content-overlay {
@@ -719,8 +720,8 @@
         .carousel-indicators {
             position: absolute;
             bottom: 10px; /* Fixed pixel positioning within video overlay */
-            left: 10px; /* Fixed pixel positioning */
-            right: 10px; /* Fixed pixel positioning */
+            left: 16px; /* Match content-overlay padding exactly */
+            right: 16px; /* Match content-overlay padding exactly */
             display: flex !important; /* Force display */
             justify-content: flex-start;
             gap: 6px; /* Slightly larger gap */
