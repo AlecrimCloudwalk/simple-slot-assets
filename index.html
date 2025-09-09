@@ -2699,17 +2699,26 @@
                         tab.appendChild(dot);
                     }
                     
-                    // Add text
+                    // Add text (double-clickable to edit)
                     const textSpan = document.createElement('span');
                     textSpan.textContent = category.display_name;
+                    textSpan.style.cursor = 'pointer';
+                    textSpan.title = 'Double-click to edit category name';
+                    
+                    // Add double-click to edit category name
+                    textSpan.addEventListener('dblclick', (e) => {
+                        e.stopPropagation(); // Prevent switching category
+                        this.editCategoryName(category);
+                    });
+                    
                     tab.appendChild(textSpan);
                     
                     categoriesDiv.appendChild(tab);
                 });
                 
-                // Disable admin buttons since we're using predefined categories and slots
-                const isNewStructure = false;
-                if (isNewStructure) {
+                // Enable admin buttons for adding categories
+                const canAddCategories = this.user && this.user.email && this.user.email.endsWith('@cloudwalk.io');
+                if (canAddCategories) {
                     const addCategoryBtn = document.createElement('button');
                     addCategoryBtn.className = 'category-tab add-category-btn';
                     addCategoryBtn.style.background = '#f8f9fa';
@@ -3339,7 +3348,7 @@
                     const isOfflineMode = this.categories.length > 0 && !this.categories[0].id.toString().includes('.');
                     
                     if (isOfflineMode) {
-                        // Offline mode - just add to local data
+                        // Offline mode - add to local data with predefined slots
                         const newCategory = {
                             id: maxSortOrder + 1,
                             name: internalName,
@@ -3348,12 +3357,29 @@
                             color: color,
                             bg_class: '',
                             sort_order: maxSortOrder + 1,
-                            slots: [] // Start with no slots
+                            slots: PREDEFINED_SLOTS.map((slotName, index) => ({
+                                id: `${maxSortOrder + 1}_${slotName}`,
+                                slot_name: slotName,
+                                display_name: SLOT_DESCRIPTIONS[slotName] || slotName,
+                                sort_order: index
+                            }))
                         };
                         
                         this.categories.push(newCategory);
-                        this.categorySlots[newCategory.id] = [];
-                        CATEGORIES[displayName] = [];
+                        this.categorySlots[newCategory.id] = newCategory.slots;
+                        
+                        // Create CATEGORIES lookup with predefined slots
+                        const categorySlotNames = PREDEFINED_SLOTS.map(slotName => 
+                            `${internalName}_${slotName}`
+                        );
+                        CATEGORIES[displayName] = categorySlotNames;
+                        
+                        // Initialize all slots to null for proper rendering
+                        categorySlotNames.forEach(slotName => {
+                            if (this.slots[slotName] === undefined) {
+                                this.slots[slotName] = null;
+                            }
+                        });
                         
                         // Close modal
                         document.querySelector('.modal-overlay').remove();
@@ -3361,35 +3387,86 @@
                         // Refresh UI
                         this.renderCategories();
                         
-                        this.showSuccess('Category added locally! (Offline mode - changes not saved to database)');
+                        // Switch to the new category
+                        this.switchCategory(displayName);
+                        
+                        this.showSuccess(`Category "${displayName}" added locally with ${PREDEFINED_SLOTS.length} predefined slots! (Offline mode)`);
                         
                     } else {
-                        // Online mode - try database
-                        const categoryData = {
-                            name: internalName,
-                            display_name: displayName,
-                            description: description || null,
-                            color: color,
-                            sort_order: maxSortOrder + 1,
-                            created_by: this.user.email
+                        // Online mode - create in database with direct API
+                        console.log(`📝 Creating category "${displayName}" in database`);
+                        
+                        const categoryResponse = await fetch(`${this.supabase.supabaseUrl}/rest/v1/categories`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({
+                                name: internalName,
+                                display_name: displayName,
+                                description: description || null,
+                                color: color,
+                                bg_class: null,
+                                sort_order: maxSortOrder + 1,
+                                is_active: true,
+                                created_by: this.user?.id || 'unknown'
+                            })
+                        });
+                        
+                        if (!categoryResponse.ok) {
+                            throw new Error(`Database request failed: ${categoryResponse.status}`);
+                        }
+                        
+                        const [newCategory] = await categoryResponse.json();
+                        console.log('✅ Category created in database:', newCategory);
+                        
+                        // Add predefined slots to the new category
+                        const categoryInfo = {
+                            id: newCategory.id,
+                            name: newCategory.name,
+                            display_name: newCategory.display_name,
+                            color: newCategory.color || '#6c757d',
+                            bg_class: newCategory.bg_class || '',
+                            sort_order: newCategory.sort_order || 0,
+                            slots: PREDEFINED_SLOTS.map((slotName, index) => ({
+                                id: `${newCategory.id}_${slotName}`,
+                                slot_name: slotName,
+                                display_name: SLOT_DESCRIPTIONS[slotName] || slotName,
+                                sort_order: index
+                            }))
                         };
                         
-                        const { data, error } = await this.supabase
-                            .from('categories')
-                            .insert(categoryData)
-                            .select()
-                            .single();
+                        // Add to local data
+                        this.categories.push(categoryInfo);
+                        this.categorySlots[newCategory.id] = categoryInfo.slots;
                         
-                        if (error) throw error;
+                        // Create CATEGORIES lookup with predefined slots
+                        const categorySlotNames = PREDEFINED_SLOTS.map(slotName => 
+                            `${newCategory.name}_${slotName}`
+                        );
+                        CATEGORIES[newCategory.display_name] = categorySlotNames;
+                        
+                        // Initialize all slots to null for proper rendering
+                        categorySlotNames.forEach(slotName => {
+                            if (this.slots[slotName] === undefined) {
+                                this.slots[slotName] = null;
+                            }
+                        });
                         
                         // Close modal
                         document.querySelector('.modal-overlay').remove();
                         
-                        // Reload categories and refresh UI
-                        await this.loadCategoriesAndSlots();
+                        // Re-render categories
                         this.renderCategories();
                         
-                        this.showSuccess('Category created successfully!');
+                        // Switch to the new category
+                        this.switchCategory(newCategory.display_name);
+                        
+                        this.showSuccess(`Category "${displayName}" created with ${PREDEFINED_SLOTS.length} predefined slots! 🎉`);
+                        console.log(`✅ Category "${displayName}" successfully created`);
                     }
                     
                 } catch (error) {
@@ -3576,6 +3653,64 @@
                         localStorage.setItem('slotDescriptions', JSON.stringify(SLOT_DESCRIPTIONS));
                     } catch (error) {
                         console.warn('Failed to save to localStorage:', error);
+                    }
+                }
+            }
+
+            async editCategoryName(category) {
+                const currentName = category.display_name;
+                
+                const newName = prompt(
+                    `Edit category name:`, 
+                    currentName
+                );
+                
+                if (newName !== null && newName.trim() !== '' && newName.trim() !== currentName) {
+                    try {
+                        console.log(`📝 Updating category name: "${currentName}" → "${newName.trim()}"`);
+                        
+                        // Update in database using direct API
+                        const updateResponse = await fetch(`${this.supabase.supabaseUrl}/rest/v1/categories?id=eq.${category.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=minimal'
+                            },
+                            body: JSON.stringify({
+                                display_name: newName.trim()
+                            })
+                        });
+                        
+                        if (!updateResponse.ok) {
+                            throw new Error(`Database update failed: ${updateResponse.status}`);
+                        }
+                        
+                        // Update local category data
+                        const oldDisplayName = category.display_name;
+                        category.display_name = newName.trim();
+                        
+                        // Update CATEGORIES lookup with new name
+                        if (CATEGORIES[oldDisplayName]) {
+                            CATEGORIES[newName.trim()] = CATEGORIES[oldDisplayName];
+                            delete CATEGORIES[oldDisplayName];
+                        }
+                        
+                        // Update current category if it was the one being edited
+                        if (this.currentCategory === oldDisplayName) {
+                            this.currentCategory = newName.trim();
+                        }
+                        
+                        // Re-render categories to show new name
+                        this.renderCategories();
+                        
+                        this.showSuccess(`Category renamed to "${newName.trim()}"! ✏️`);
+                        console.log(`✅ Category successfully renamed in database`);
+                        
+                    } catch (error) {
+                        console.error('❌ Failed to update category name:', error);
+                        this.showError(`Failed to update category name: ${error.message}`);
                     }
                 }
             }
@@ -3862,9 +3997,14 @@
                         // Extract the base slot name (last part after underscores)
                         const baseSlotName = slotName.split('_').pop();
                         // Use the description from SLOT_DESCRIPTIONS with better fallback
-                        const description = SLOT_DESCRIPTIONS[baseSlotName] || SLOT_DESCRIPTIONS[slotName] || `Use ${baseSlotName.replace(/_/g, ' ')}`;
+                        const description = SLOT_DESCRIPTIONS[baseSlotName] || SLOT_DESCRIPTIONS[slotName] || `Use ${baseSlotName.replace(/_/g, ' ')} agora!`;
                         titleElement.textContent = description;
                         console.log(`📱 Display text: ${baseSlotName} → "${description}"`);
+                        
+                        // Log missing descriptions for debugging
+                        if (!SLOT_DESCRIPTIONS[baseSlotName] && !SLOT_DESCRIPTIONS[slotName]) {
+                            console.warn(`⚠️ Missing Portuguese description for slot: ${baseSlotName} (full: ${slotName})`);
+                        }
                     } else {
                         titleElement.textContent = 'Selecione uma categoria';
                     }
