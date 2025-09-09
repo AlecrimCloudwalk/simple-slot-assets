@@ -1225,8 +1225,22 @@
                 try {
                     console.log('🔐 Checking initial authentication...');
                     
-                    // Handle OAuth callback tokens first
-                    const { data: session, error: sessionError } = await this.supabase.auth.getSession();
+                    // Add timeout protection for Supabase calls
+                    const timeout = (ms, operation) => {
+                        return new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error(`${operation} timed out after ${ms}ms`)), ms)
+                        );
+                    };
+                    
+                    // Handle OAuth callback tokens first with timeout
+                    console.log('🔐 Step 1: Getting session...');
+                    const sessionPromise = this.supabase.auth.getSession();
+                    const { data: session, error: sessionError } = await Promise.race([
+                        sessionPromise,
+                        timeout(10000, 'getSession')
+                    ]);
+                    
+                    console.log('🔐 Step 1 complete - Session data:', !!session);
                     
                     if (sessionError) {
                         console.error('🔐 Session error:', sessionError);
@@ -1234,7 +1248,14 @@
                         return;
                     }
                     
-                    const { data: { user }, error: userError } = await this.supabase.auth.getUser();
+                    console.log('🔐 Step 2: Getting user...');
+                    const userPromise = this.supabase.auth.getUser();
+                    const { data: { user }, error: userError } = await Promise.race([
+                        userPromise,
+                        timeout(10000, 'getUser')
+                    ]);
+                    
+                    console.log('🔐 Step 2 complete - User data:', !!user, user?.email);
                     
                     if (userError) {
                         console.error('🔐 User error:', userError);
@@ -1289,7 +1310,18 @@
                     
                 } catch (error) {
                     console.error('❌ Error in checkAuth:', error);
-                    this.showError('Authentication check failed');
+                    
+                    // Provide specific error messages based on the error type
+                    let errorMessage = 'Authentication check failed';
+                    if (error.message.includes('timed out')) {
+                        errorMessage = 'Authentication check timed out. Please check your internet connection and try refreshing the page.';
+                    } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                        errorMessage = 'Network error. Please check your internet connection and try again.';
+                    } else if (error.message.includes('Invalid API key') || error.message.includes('Authentication failed')) {
+                        errorMessage = 'Authentication service configuration error. Please contact support.';
+                    }
+                    
+                    this.showError(errorMessage);
                     this.showSignInButton();
                 } finally {
                     this.hideAuthLoading();
