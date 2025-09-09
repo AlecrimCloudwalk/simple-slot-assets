@@ -1235,10 +1235,9 @@
                                 // Load categories and slots with diagnostic approach
                                 await this.loadCategoriesAndSlots();
                                 
-                                // TEMPORARILY SKIP loadSlots to test categories
-                                this.showAuthLoading('🎰 Skipping slots (database issue)...');
-                                console.log('⚠️ Skipping loadSlots due to SDK timeout issues');
-                                // await this.loadSlots(); // DISABLED until connection fixed
+                                // Load existing uploaded assets from database
+                                this.showAuthLoading('🎰 Loading your slots...');
+                                await this.loadSlots();
                                 
                                 // Set current category after loading
                                 this.setDefaultCurrentCategory();
@@ -2858,11 +2857,31 @@
 
             async loadSlots() {
                 try {
-                    const { data, error } = await this.supabase
-                        .from('slot_assets')
-                        .select('*');
+                    // Use direct API to avoid SDK timeout issues
+                    console.log('🎰 Loading existing slot assets from database...');
                     
-                    if (error) throw error;
+                    const session = await this.supabase.auth.getSession();
+                    const headers = {
+                        'apikey': this.supabase.supabaseKey,
+                        'Authorization': session.data.session ? `Bearer ${session.data.session.access_token}` : `Bearer ${this.supabase.supabaseKey}`,
+                        'Content-Type': 'application/json'
+                    };
+                    
+                    const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/slot_assets?select=*`, {
+                        headers
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API call failed: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`🎰 Loaded ${data.length} existing slot assets from database`);
+                    
+                    if (!data || data.length === 0) {
+                        console.log('🎰 No existing slot assets found - starting fresh');
+                        return;
+                    }
                     
                     // Reset all category-specific slots
                     Object.values(CATEGORIES).flat().forEach(name => this.slots[name] = null);
