@@ -2749,8 +2749,9 @@
                         slotsGrid.appendChild(slotCard);
                     });
                     
-                    // Add "Add Slot" button (only if new database structure is available)
-                    if (isNewStructure) {
+                    // Disable "Add Slot" button since we use predefined slots
+                    const canAddSlots = false; // Using predefined slots only
+                    if (canAddSlots) {
                         const addSlotCard = document.createElement('div');
                         addSlotCard.className = 'slot-card add-slot-card';
                         addSlotCard.style.border = '2px dashed #ddd';
