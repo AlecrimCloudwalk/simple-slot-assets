@@ -170,7 +170,7 @@
         .slot-card {
             border: 1px solid #e9ecef;
             border-radius: 8px;
-            padding: 10px;
+            padding: 4px;
             background: #fafafa;
             transition: all 0.3s ease;
             position: relative;
@@ -187,8 +187,9 @@
         }
 
         .slot-card.has-asset {
-            border-color: #28a745;
-            background: white;
+            border: none;
+            background: transparent;
+            padding: 0;
         }
 
         .slot-header {
@@ -212,15 +213,27 @@
         /* Removed slot status indicators */
 
         .slot-content {
-            min-height: 200px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 2px dashed #ddd;
             border-radius: 8px;
             position: relative;
             cursor: pointer;
+        }
+
+        /* Only show dashed border for empty slots */
+        .slot-content:not(.has-asset) {
+            min-height: 200px;
+            border: 2px dashed #ddd;
+        }
+
+        /* Remove border and padding for slots with assets */
+        .slot-content.has-asset {
+            border: none;
+            padding: 0;
+            background: transparent;
+            position: relative;
         }
 
         .slot-content.drag-over {
@@ -249,19 +262,13 @@
 
         .slot-preview {
             width: 100%;
-            aspect-ratio: 16/10;
+            height: auto;
             object-fit: cover;
             border-radius: 6px;
-            margin-bottom: 6px;
+            display: block;
             /* Performance optimizations */
             will-change: auto;
             backface-visibility: hidden;
-            /* Add loading placeholder */
-            background: #f0f0f0;
-            background-image: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            transition: transform 0.3s ease;
         }
         
         /* Video specific styles */
@@ -343,14 +350,20 @@
         .slot-actions {
             display: flex;
             gap: 6px;
-            margin-top: 6px;
             justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            z-index: 5;
         }
 
         .slot-card:hover .slot-actions {
             opacity: 1;
+            pointer-events: auto;
         }
 
         .slot-voting {
@@ -361,10 +374,16 @@
             opacity: 0;
             transition: opacity 0.3s ease;
             flex-wrap: wrap;
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
         }
 
         .slot-card:hover .slot-voting {
             opacity: 1;
+            pointer-events: auto;
         }
 
         .btn-vote {
@@ -3095,7 +3114,7 @@
                         <div class="slot-name" title="${displayName}">${displayName}</div>
                         <button class="btn btn-sm" style="font-size: 0.6rem; padding: 2px 4px; margin-left: 4px;" onclick="editSlotDescription('${actualSlotName}')" title="Edit description">✏️</button>
                     </div>
-                    <div class="slot-content" ondrop="handleDrop(event, '${slotName}')" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
+                    <div class="slot-content ${slotData ? 'has-asset' : ''}" ondrop="handleDrop(event, '${slotName}')" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
                         ${contentHtml}
                     </div>
                 `;
