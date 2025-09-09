@@ -4920,8 +4920,55 @@
             assetManager.deleteCurrentCategory();
         }
 
-        function voteAsset(slotName, voteType) {
-            assetManager.voteAsset(slotName, voteType);
+        async function voteAsset(slotName, voteType) {
+            // Add diagnostic logging before calling the actual function
+            console.log('🔧 DIAGNOSTIC: Testing voting system access...');
+            
+            try {
+                // Test 1: Check if asset_votes table exists
+                const testResponse = await fetch(
+                    `${assetManager.supabase.supabaseUrl}/rest/v1/asset_votes?limit=1`, {
+                    headers: {
+                        'Authorization': `Bearer ${assetManager.supabase.supabaseKey}`,
+                        'apikey': assetManager.supabase.supabaseKey,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('🔧 DIAGNOSTIC: asset_votes table response:', testResponse.status, testResponse.statusText);
+                
+                if (!testResponse.ok) {
+                    if (testResponse.status === 404) {
+                        assetManager.showError('❌ DIAGNOSTIC: asset_votes table not found! Did you run the setup-vote-system-production.sql script?');
+                        return;
+                    } else if (testResponse.status === 401) {
+                        assetManager.showError('❌ DIAGNOSTIC: Permission denied accessing asset_votes table. Check RLS policies.');
+                        return;
+                    } else {
+                        assetManager.showError(`❌ DIAGNOSTIC: Unexpected error ${testResponse.status}: ${testResponse.statusText}`);
+                        return;
+                    }
+                }
+
+                const testData = await testResponse.json();
+                console.log('🔧 DIAGNOSTIC: asset_votes table accessible, sample data:', testData);
+                
+                // Test 2: Check authentication
+                if (!assetManager.user) {
+                    assetManager.showError('❌ DIAGNOSTIC: User not authenticated');
+                    return;
+                }
+                
+                console.log('🔧 DIAGNOSTIC: User authenticated:', assetManager.user.email);
+                
+                // If we get here, proceed with actual voting
+                console.log('✅ DIAGNOSTIC: All checks passed, proceeding with vote...');
+                assetManager.voteAsset(slotName, voteType);
+                
+            } catch (error) {
+                console.error('🔧 DIAGNOSTIC ERROR:', error);
+                assetManager.showError(`❌ DIAGNOSTIC: ${error.message}`);
+            }
         }
 
         function showComments(slotName) {
