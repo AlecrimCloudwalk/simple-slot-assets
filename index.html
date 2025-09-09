@@ -1153,24 +1153,12 @@
                     
                     this.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     
-                    // Add connection diagnostics
+                    // Add connection diagnostics (no SDK calls to avoid timeouts)
                     console.log('🔍 Supabase client created:');
                     console.log('   URL:', SUPABASE_URL);
                     console.log('   Key:', SUPABASE_ANON_KEY.substring(0, 20) + '...');
                     console.log('   Client:', !!this.supabase);
-                    
-                    // Test basic connectivity
-                    try {
-                        const startTime = Date.now();
-                        const { data: healthCheck } = await Promise.race([
-                            this.supabase.from('categories').select('count', { count: 'exact', head: true }),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timeout')), 5000))
-                        ]);
-                        const duration = Date.now() - startTime;
-                        console.log('✅ Supabase connectivity test passed in', duration + 'ms');
-                    } catch (healthError) {
-                        console.log('⚠️ Supabase connectivity test failed:', healthError.message);
-                    }
+                    console.log('✅ Will use direct fetch calls to avoid SDK timeout issues');
                     
                     // Set up auth state listener
                     this.supabase.auth.onAuthStateChange(async (event, session) => {
@@ -2014,47 +2002,44 @@
             }
             
             async loadDataDirectAPI() {
-                console.log('📊 Loading data with extended timeouts...');
-                
-                // Try with longer timeouts and proper error handling
-                const timeout = 30000; // 30 seconds
+                console.log('📊 Loading data via direct fetch (bypassing SDK)...');
                 
                 try {
-                    console.log('📊 Attempting categories query with 30s timeout...');
+                    // Use direct fetch since we know it works from the connection test
+                    console.log('📊 Making direct REST API call...');
                     
-                    const categoriesPromise = this.supabase
-                        .from('categories')
-                        .select('id, name, display_name, color, bg_class, sort_order')
-                        .eq('is_active', true)
-                        .order('sort_order', { ascending: true });
-                    
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Query timeout after 30s')), timeout)
+                    const response = await fetch(
+                        `${this.supabase.supabaseUrl}/rest/v1/categories?is_active=eq.true&order=sort_order.asc&select=id,name,display_name,color,bg_class,sort_order`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
+                        }
                     );
                     
-                    const { data: categoriesData, error: categoriesError } = await Promise.race([
-                        categoriesPromise,
-                        timeoutPromise
-                    ]);
-                    
-                    if (categoriesError) {
-                        throw new Error(`Categories query failed: ${categoriesError.message}`);
+                    if (!response.ok) {
+                        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
                     }
                     
-                    console.log('📊 Real categories loaded:', categoriesData ? categoriesData.length : 0, 'items');
+                    const categoriesData = await response.json();
+                    console.log('📊 Categories loaded via direct fetch:', categoriesData.length, 'items');
                     
                     if (!categoriesData || categoriesData.length === 0) {
                         throw new Error('No active categories found in database');
                     }
                     
-                    // Skip slots for now to avoid another timeout
+                    // Skip slots for now - focus on getting categories working
                     const slotsData = [];
-                    console.log('📊 Skipping slots query to avoid timeout');
+                    console.log('📊 Skipping slots query for now');
                     
                     return this.processLoadedData(categoriesData, slotsData);
                     
                 } catch (error) {
-                    console.error('📊 Extended timeout query failed:', error);
+                    console.error('📊 Direct fetch failed:', error);
                     throw error;
                 }
             }
