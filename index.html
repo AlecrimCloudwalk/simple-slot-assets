@@ -270,12 +270,20 @@
             animation: none;
         }
 
-        .slot-card:hover .slot-preview {
+        .slot-card:hover .slot-content {
             transform: scale(1.8);
             z-index: 100;
             position: relative;
             border-radius: 8px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            transform-origin: center;
+        }
+        
+        /* Ensure all child elements scale together */
+        .slot-card:hover .slot-preview,
+        .slot-card:hover .slot-actions,
+        .slot-card:hover .slot-info {
+            transform: none; /* Let parent handle the scaling */
         }
 
         .slot-preview[src] {
@@ -341,6 +349,130 @@
 
         .slot-card:hover .slot-actions {
             opacity: 1;
+        }
+
+        .slot-voting {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            flex-wrap: wrap;
+        }
+
+        .slot-card:hover .slot-voting {
+            opacity: 1;
+        }
+
+        .btn-vote {
+            padding: 2px 6px;
+            font-size: 0.6rem;
+            border-radius: 3px;
+            border: 1px solid transparent;
+            background: #f8f9fa;
+            color: #495057;
+            min-width: 35px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .btn-upvote:hover {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .btn-downvote:hover {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .btn-comments {
+            padding: 2px 6px;
+            font-size: 0.6rem;
+            border-radius: 3px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            color: #0d47a1;
+            min-width: 30px;
+        }
+
+        .btn-comments:hover {
+            background: #bbdefb;
+        }
+
+        /* Visual indicator for downvoted slots */
+        .slot-card.has-downvotes {
+            border-color: #dc3545 !important;
+            background: #fff5f5 !important;
+        }
+
+        .slot-card.has-downvotes .slot-header {
+            background: #f8d7da;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .slot-card.has-downvotes .slot-name {
+            color: #721c24;
+            font-weight: 600;
+        }
+
+        /* Comment system styles */
+        .comments-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        .comment-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+        }
+
+        .comment-date {
+            color: #6c757d;
+            font-size: 0.7rem;
+        }
+
+        .comment-text {
+            color: #495057;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .add-comment-section {
+            border-top: 1px solid #e9ecef;
+            padding-top: 15px;
+        }
+
+        .add-comment-section textarea {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+
+        .add-comment-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
         }
 
         .btn {
@@ -2924,6 +3056,15 @@
                             <button class="btn btn-primary" onclick="replaceAsset('${slotName}')">📝 Replace</button>
                             <button class="btn btn-danger" onclick="removeAsset('${slotName}')">🗑️ Remove</button>
                         </div>
+                        <div class="slot-voting">
+                            <button class="btn btn-vote btn-upvote" onclick="voteAsset('${slotName}', 'upvote')" title="Upvote this asset">
+                                👍 <span id="upvotes-${slotName}">${slotData.votes?.upvotes || 0}</span>
+                            </button>
+                            <button class="btn btn-vote btn-downvote" onclick="voteAsset('${slotName}', 'downvote')" title="Downvote this asset">
+                                👎 <span id="downvotes-${slotName}">${slotData.votes?.downvotes || 0}</span>
+                            </button>
+                            ${(slotData.votes?.downvotes || 0) > 0 ? `<button class="btn btn-comments" onclick="showComments('${slotName}')" title="View comments">💬 ${slotData.votes?.comments || 0}</button>` : ''}
+                        </div>
                     `;
                 } else {
                     contentHtml = `
@@ -2946,6 +3087,13 @@
                         ${contentHtml}
                     </div>
                 `;
+
+                // Apply downvote styling if asset has downvotes
+                if (slotData && slotData.votes && slotData.votes.downvotes > 0) {
+                    card.classList.add('has-downvotes');
+                } else {
+                    card.classList.remove('has-downvotes');
+                }
                 
                 return card;
             }
@@ -2982,6 +3130,18 @@
                     
                     // Populate with data
                     data.forEach(item => {
+                        // Parse votes JSON if it exists
+                        if (item.votes && typeof item.votes === 'string') {
+                            try {
+                                item.votes = JSON.parse(item.votes);
+                            } catch (error) {
+                                console.warn(`Failed to parse votes for ${item.slot_name}:`, error);
+                                item.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {} };
+                            }
+                        } else if (!item.votes) {
+                            item.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {} };
+                        }
+                        
                         this.slots[item.slot_name] = item;
                     });
                     
@@ -3676,6 +3836,215 @@
                 }
             }
 
+            async voteAsset(slotName, voteType) {
+                if (!this.user) {
+                    this.showError('You must be signed in to vote');
+                    return;
+                }
+
+                console.log(`🗳️ ${voteType} for slot: ${slotName}`);
+                
+                try {
+                    // Get current slot data
+                    const slotData = this.slots[slotName];
+                    if (!slotData) {
+                        this.showError('Slot not found');
+                        return;
+                    }
+
+                    // Initialize votes if not exists
+                    if (!slotData.votes) {
+                        slotData.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {} };
+                    }
+
+                    const userEmail = this.user.email;
+                    const existingVote = slotData.votes.user_votes?.[userEmail];
+
+                    // Handle vote logic
+                    if (existingVote === voteType) {
+                        // Remove existing vote
+                        slotData.votes[voteType + 's']--;
+                        delete slotData.votes.user_votes[userEmail];
+                        console.log(`❌ Removed ${voteType} from ${slotName}`);
+                    } else {
+                        // Remove previous vote if exists
+                        if (existingVote) {
+                            slotData.votes[existingVote + 's']--;
+                        }
+                        
+                        // Add new vote
+                        slotData.votes[voteType + 's']++;
+                        slotData.votes.user_votes[userEmail] = voteType;
+                        console.log(`✅ Added ${voteType} to ${slotName}`);
+
+                        // If downvote and no existing comment, prompt for comment
+                        if (voteType === 'downvote' && !existingVote) {
+                            setTimeout(() => this.promptDownvoteComment(slotName), 100);
+                        }
+                    }
+
+                    // Update in database (simple approach - store votes as JSON in slot_assets)
+                    await this.updateSlotVotes(slotName, slotData.votes);
+
+                    // Update UI
+                    this.updateVoteDisplay(slotName, slotData.votes);
+                    
+                    // Update slot styling
+                    this.updateSlotStyling(slotName);
+
+                } catch (error) {
+                    console.error('❌ Error voting:', error);
+                    this.showError(`Failed to ${voteType}: ${error.message}`);
+                }
+            }
+
+            async updateSlotVotes(slotName, votes) {
+                try {
+                    const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/slot_assets?slot_name=eq.${slotName}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({ votes: JSON.stringify(votes) })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Vote update failed: ${response.status}`);
+                    }
+
+                    console.log('✅ Votes updated in database');
+                } catch (error) {
+                    console.error('❌ Failed to update votes in database:', error);
+                    throw error;
+                }
+            }
+
+            updateVoteDisplay(slotName, votes) {
+                const upvoteSpan = document.getElementById(`upvotes-${slotName}`);
+                const downvoteSpan = document.getElementById(`downvotes-${slotName}`);
+                
+                if (upvoteSpan) upvoteSpan.textContent = votes.upvotes || 0;
+                if (downvoteSpan) downvoteSpan.textContent = votes.downvotes || 0;
+
+                console.log(`📊 Updated vote display for ${slotName}: ↑${votes.upvotes} ↓${votes.downvotes}`);
+            }
+
+            updateSlotStyling(slotName) {
+                const slotData = this.slots[slotName];
+                const slotCard = document.querySelector(`[data-slot="${slotName}"]`);
+                
+                if (slotCard && slotData) {
+                    if (slotData.votes && slotData.votes.downvotes > 0) {
+                        slotCard.classList.add('has-downvotes');
+                    } else {
+                        slotCard.classList.remove('has-downvotes');
+                    }
+                }
+            }
+
+            promptDownvoteComment(slotName) {
+                const reason = prompt(
+                    '💬 Why are you downvoting this asset?\n\nYour feedback helps improve the quality:',
+                    ''
+                );
+
+                if (reason && reason.trim()) {
+                    this.addComment(slotName, reason.trim());
+                }
+            }
+
+            async addComment(slotName, comment) {
+                if (!this.user || !comment) return;
+
+                try {
+                    const slotData = this.slots[slotName];
+                    if (!slotData.votes.comments_data) {
+                        slotData.votes.comments_data = [];
+                    }
+
+                    const newComment = {
+                        id: Date.now(),
+                        user: this.user.email,
+                        comment: comment,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    slotData.votes.comments_data.push(newComment);
+                    slotData.votes.comments = slotData.votes.comments_data.length;
+
+                    // Update in database
+                    await this.updateSlotVotes(slotName, slotData.votes);
+                    
+                    console.log(`💬 Added comment to ${slotName}:`, comment);
+                    this.showSuccess('Comment added! 💬');
+
+                } catch (error) {
+                    console.error('❌ Error adding comment:', error);
+                    this.showError('Failed to add comment');
+                }
+            }
+
+            showComments(slotName) {
+                const slotData = this.slots[slotName];
+                if (!slotData || !slotData.votes || !slotData.votes.comments_data) {
+                    this.showError('No comments found');
+                    return;
+                }
+
+                const comments = slotData.votes.comments_data;
+                let commentsHtml = comments.map(comment => `
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <strong>${comment.user}</strong>
+                            <span class="comment-date">${new Date(comment.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        <div class="comment-text">${comment.comment}</div>
+                    </div>
+                `).join('');
+
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-dialog">
+                        <div class="modal-header">
+                            <h3>💬 Comments - ${slotName.replace(/_/g, ' ')}</h3>
+                            <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="comments-list">
+                                ${commentsHtml}
+                            </div>
+                            <div class="add-comment-section">
+                                <textarea id="newComment" placeholder="Add a comment..." rows="3"></textarea>
+                                <button class="btn btn-primary" onclick="assetManager.addCommentFromModal('${slotName}')">Add Comment</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+            }
+
+            async addCommentFromModal(slotName) {
+                const textarea = document.getElementById('newComment');
+                const comment = textarea.value.trim();
+                
+                if (!comment) {
+                    this.showError('Please enter a comment');
+                    return;
+                }
+
+                await this.addComment(slotName, comment);
+                textarea.value = '';
+                
+                // Close modal and refresh
+                document.querySelector('.modal-overlay').remove();
+                this.showComments(slotName); // Reopen to show new comment
+            }
+
             editSlotDescription(slotName) {
                 const currentDescription = SLOT_DESCRIPTIONS[slotName] || slotName;
                 
@@ -4248,31 +4617,82 @@
 
 
             async exportAll() {
+                console.log('📥 Starting export all URLs...');
+                console.log('📊 Current slots data:', this.slots);
+                
                 const filledSlots = Object.entries(this.slots).filter(([name, data]) => data !== null);
+                console.log(`📊 Found ${filledSlots.length} filled slots:`, filledSlots.map(([name]) => name));
                 
                 if (filledSlots.length === 0) {
-                    alert('No assets to export!');
+                    this.showError('No assets to export! Upload some assets first.');
                     return;
                 }
                 
-                let exportText = 'CloudWalk Asset URLs:\n\n';
-                filledSlots.forEach(([name, data]) => {
-                    exportText += `${name.replace(/_/g, ' ')}: ${data.public_url}\n`;
+                // Organize by categories
+                let exportText = 'CloudWalk Asset URLs Export\n';
+                exportText += `Generated: ${new Date().toLocaleString()}\n`;
+                exportText += `Total Assets: ${filledSlots.length}\n\n`;
+                
+                // Group by categories
+                const slotsByCategory = {};
+                filledSlots.forEach(([slotName, data]) => {
+                    // Extract category from slot name (e.g., "beauty_salon_checkout" -> "beauty_salon")
+                    const categoryMatch = slotName.match(/^(.+?)_([^_]+)$/);
+                    if (categoryMatch) {
+                        const categoryName = categoryMatch[1].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        const slotType = categoryMatch[2].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        
+                        if (!slotsByCategory[categoryName]) {
+                            slotsByCategory[categoryName] = [];
+                        }
+                        slotsByCategory[categoryName].push({
+                            name: slotType,
+                            fullName: slotName,
+                            url: data.public_url,
+                            filename: data.filename
+                        });
+                    } else {
+                        // Fallback for slots without category prefix
+                        if (!slotsByCategory['Other']) {
+                            slotsByCategory['Other'] = [];
+                        }
+                        slotsByCategory['Other'].push({
+                            name: slotName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            fullName: slotName,
+                            url: data.public_url,
+                            filename: data.filename
+                        });
+                    }
                 });
+                
+                // Generate organized export text
+                Object.entries(slotsByCategory).forEach(([categoryName, slots]) => {
+                    exportText += `=== ${categoryName} ===\n`;
+                    slots.forEach(slot => {
+                        exportText += `${slot.name}: ${slot.url}\n`;
+                        exportText += `  File: ${slot.filename}\n`;
+                    });
+                    exportText += '\n';
+                });
+                
+                console.log('📄 Export text generated:', exportText.substring(0, 200) + '...');
                 
                 try {
                     await navigator.clipboard.writeText(exportText);
-                    this.showSuccess('URLs copied to clipboard!');
+                    this.showSuccess(`📥 ${filledSlots.length} URLs copied to clipboard!`);
+                    console.log('✅ Export copied to clipboard successfully');
                 } catch (error) {
+                    console.warn('⚠️ Clipboard failed, downloading file:', error);
                     // Fallback download
                     const blob = new Blob([exportText], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'cloudwalk-asset-urls.txt';
+                    a.download = `cloudwalk-assets-${new Date().toISOString().split('T')[0]}.txt`;
                     a.click();
                     URL.revokeObjectURL(url);
-                    this.showSuccess('URLs downloaded as file!');
+                    this.showSuccess(`📥 ${filledSlots.length} URLs downloaded as file!`);
+                    console.log('✅ Export downloaded as file successfully');
                 }
             }
 
@@ -4432,6 +4852,14 @@
 
         function deleteCurrentCategory() {
             assetManager.deleteCurrentCategory();
+        }
+
+        function voteAsset(slotName, voteType) {
+            assetManager.voteAsset(slotName, voteType);
+        }
+
+        function showComments(slotName) {
+            assetManager.showComments(slotName);
         }
 
         function refreshData() {
