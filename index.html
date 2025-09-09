@@ -3896,6 +3896,18 @@
                             vote_type: voteType
                         };
 
+                        // DETAILED DEBUGGING
+                        console.log('🔧 DEBUG: Vote request details:');
+                        console.log('🔧 DEBUG: URL:', `${this.supabase.supabaseUrl}/rest/v1/asset_votes`);
+                        console.log('🔧 DEBUG: Headers:', {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'resolution=merge-duplicates'
+                        });
+                        console.log('🔧 DEBUG: Body:', JSON.stringify(voteData));
+                        console.log('🔧 DEBUG: supabaseKey length:', this.supabase.supabaseKey?.length);
+
                         const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_votes`, {
                             method: 'POST',
                             headers: {
@@ -3906,6 +3918,13 @@
                             },
                             body: JSON.stringify(voteData)
                         });
+
+                        console.log('🔧 DEBUG: Response status:', response.status);
+                        console.log('🔧 DEBUG: Response headers:', response.headers);
+                        
+                        // Get response text for debugging
+                        const responseText = await response.text();
+                        console.log('🔧 DEBUG: Response body:', responseText);
 
                         if (!response.ok) {
                             throw new Error(`Failed to vote: ${response.status} ${response.statusText}`);
