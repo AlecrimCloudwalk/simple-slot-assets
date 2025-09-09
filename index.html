@@ -2908,6 +2908,18 @@
             }
 
             async uploadAsset(slotName) {
+                // Check if user is authenticated before allowing upload
+                if (!this.user) {
+                    this.showError('Please sign in to upload assets');
+                    return;
+                }
+                
+                // Check if user is CloudWalk email
+                if (!this.user.email || !this.user.email.endsWith('@cloudwalk.io')) {
+                    this.showError('Only @cloudwalk.io users can upload assets');
+                    return;
+                }
+                
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'image/*,video/*';
@@ -2962,23 +2974,24 @@
                     console.log('📤 Generated filename:', fileName);
                     console.log('📤 Attempting upload to bucket: slot-assets');
                     
-                    // Test storage bucket access first
-                    console.log('📤 Testing storage bucket access...');
+                    // Test storage bucket access directly (bypass bucket listing)
+                    console.log('📤 Testing direct bucket access...');
                     try {
-                        const { data: buckets, error: listError } = await this.supabase.storage.listBuckets();
-                        console.log('📤 Available storage buckets:', buckets?.map(b => b.name));
+                        // Skip bucket listing (often fails due to permissions) and test direct access
+                        const { data: testFiles, error: testError } = await this.supabase.storage
+                            .from('slot-assets')
+                            .list('', { limit: 1 });
                         
-                        if (listError) {
-                            console.error('📤 Error listing buckets:', listError);
+                        if (testError) {
+                            console.error('📤 Direct bucket access failed:', testError);
+                            if (testError.message.includes('not found')) {
+                                throw new Error('Storage bucket "slot-assets" does not exist. Please create it in Supabase dashboard.');
+                            } else {
+                                throw new Error(`Storage bucket access denied: ${testError.message}. Check bucket policies in Supabase dashboard.`);
+                            }
                         }
                         
-                        const slotAssetsBucket = buckets?.find(b => b.name === 'slot-assets');
-                        if (!slotAssetsBucket) {
-                            console.error('📤 slot-assets bucket not found! Available buckets:', buckets?.map(b => b.name));
-                            throw new Error('Storage bucket "slot-assets" does not exist. Please create it in Supabase dashboard.');
-                        }
-                        
-                        console.log('📤 slot-assets bucket found:', slotAssetsBucket);
+                        console.log('📤 slot-assets bucket accessible!');
                     } catch (bucketError) {
                         console.error('📤 Bucket access test failed:', bucketError);
                         throw new Error(`Storage bucket test failed: ${bucketError.message}`);
@@ -3080,6 +3093,8 @@
                     
                     if (error.message.includes('slot-assets') && error.message.includes('does not exist')) {
                         errorMessage = 'Storage bucket missing. Please create "slot-assets" bucket in Supabase dashboard.';
+                    } else if (error.message.includes('row-level security policy') || error.message.includes('violates row-level security')) {
+                        errorMessage = 'Upload blocked by security policy. Make sure you are signed in with a @cloudwalk.io account and storage policies are configured.';
                     } else if (error.message.includes('permission') || error.message.includes('access')) {
                         errorMessage = 'Storage permission denied. Please check bucket policies in Supabase dashboard.';
                     } else if (error.message.includes('size') || error.message.includes('limit')) {
