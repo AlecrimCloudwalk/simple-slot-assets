@@ -1271,49 +1271,22 @@
                     // Set up auth state listener
                     this.supabase.auth.onAuthStateChange(async (event, session) => {
                         console.log('🔐 Auth state changed:', event, session?.user?.email);
-                        if (event === 'SIGNED_IN' && session?.user) {
+                        
+                        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
                             // Prevent duplicate auth handling
                             if (this.isAuthenticating) {
                                 console.log('🔐 Auth already in progress, skipping duplicate...');
                                 return;
                             }
-                            this.isAuthenticating = true;
                             
-                            this.user = session.user;
-                            this.showUserInfo(session.user);
-                            this.showMainContent();
+                            // Handle authenticated user (new sign in or existing session)
+                            await this.handleAuthenticatedUser(session);
                             
-                            try {
-                                // Show loading state with informative message
-                                this.showAuthLoading('🔐 Authenticated! Loading your data...');
-                                
-                                // Shorter initial wait since we now have robust auth checking
-                                console.log('🔐 Auth successful, brief wait before loading...');
-                                await new Promise(resolve => setTimeout(resolve, 500));
-                                
-                                // Update loading message
-                                this.showAuthLoading('🔍 Running database diagnostics...');
-                                
-                                // Load categories and slots with diagnostic approach
-                                await this.loadCategoriesAndSlots();
-                                
-                                // Load existing uploaded assets from database
-                                this.showAuthLoading('🎰 Loading your slots...');
-                                await this.loadSlots();
-                                
-                                // Set current category after loading
-                                this.setDefaultCurrentCategory();
-                                
-                                console.log('✅ Authentication and data loading complete!');
-                                
-                            } catch (loadError) {
-                                console.error('❌ Error during post-auth loading:', loadError);
-                                this.showError('Failed to load data after authentication');
-                            } finally {
-                                // Always hide loading state and reset auth flag
-                                this.hideAuthLoading();
-                                this.isAuthenticating = false;
-                            }
+                        } else if (event === 'INITIAL_SESSION' && !session?.user) {
+                            // No existing session found on page load
+                            console.log('🔐 No existing session found, showing sign in');
+                            this.showSignInButton();
+                            this.hideAuthLoading();
                             
                         } else if (event === 'SIGNED_OUT') {
                             this.user = null;
@@ -1338,6 +1311,46 @@
                 }
             }
 
+            async handleAuthenticatedUser(session) {
+                try {
+                    this.isAuthenticating = true;
+                    
+                    this.user = session.user;
+                    this.showUserInfo(session.user);
+                    this.showMainContent();
+                    
+                    // Show loading state with informative message
+                    this.showAuthLoading('🔐 Authenticated! Loading your data...');
+                    
+                    // Shorter initial wait since we now have robust auth checking
+                    console.log('🔐 Auth successful, brief wait before loading...');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Update loading message
+                    this.showAuthLoading('🔍 Running database diagnostics...');
+                    
+                    // Load categories and slots with diagnostic approach
+                    await this.loadCategoriesAndSlots();
+                    
+                    // Load existing uploaded assets from database
+                    this.showAuthLoading('🎰 Loading your slots...');
+                    await this.loadSlots();
+                    
+                    // Set current category after loading
+                    this.setDefaultCurrentCategory();
+                    
+                    console.log('✅ Authentication and data loading complete!');
+                    
+                } catch (loadError) {
+                    console.error('❌ Error during post-auth loading:', loadError);
+                    this.showError('Failed to load data after authentication');
+                } finally {
+                    // Always hide loading state and reset auth flag
+                    this.hideAuthLoading();
+                    this.isAuthenticating = false;
+                }
+            }
+            
             async checkAuth() {
                 try {
                     console.log('🔐 Checking initial authentication...');
