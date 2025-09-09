@@ -1,26 +1,30 @@
 -- Populate Initial Data for CloudWalk Slot Asset Manager
 -- Run this in Supabase SQL Editor to add sample categories and slots
+-- 
+-- IMPORTANT: Make sure you are signed in as a CloudWalk user (@cloudwalk.io email)
+--           before running this script, as it uses auth.uid() to set created_by fields
 
 -- =============================================
 -- INSERT SAMPLE CATEGORIES
 -- =============================================
 
-INSERT INTO public.categories (name, display_name, color, bg_class, sort_order, is_active) VALUES
-('checkout', 'Checkout', '#4F46E5', 'bg-indigo-500', 1, true),
-('create_bill', 'Create Bill', '#059669', 'bg-emerald-600', 2, true),
-('dirf', 'DIRF', '#DC2626', 'bg-red-600', 3, true),
-('infinite_card', 'Infinite Card', '#7C3AED', 'bg-violet-600', 4, true),
-('infinite_cash', 'Infinite Cash', '#EA580C', 'bg-orange-600', 5, true),
-('infinite_cash_limit', 'Cash Limit Request', '#D97706', 'bg-amber-600', 6, true),
-('instant_settlement', 'Instant Settlement', '#0D9488', 'bg-teal-600', 7, true),
-('pay_bill', 'Pay Bill', '#0EA5E9', 'bg-sky-500', 8, true),
-('piselli', 'Piselli', '#EC4899', 'bg-pink-500', 9, true),
-('pix_credit', 'PIX Credit', '#10B981', 'bg-emerald-500', 10, true),
-('referral', 'Referral Program', '#8B5CF6', 'bg-purple-500', 11, true),
-('supercobra', 'Super Cobra', '#F59E0B', 'bg-yellow-500', 12, true),
-('tap', 'Tap to Pay', '#EF4444', 'bg-red-500', 13, true)
+INSERT INTO public.categories (name, display_name, created_by, color, bg_class, sort_order, is_active) VALUES
+('checkout', 'Checkout', auth.uid(), '#4F46E5', 'bg-indigo-500', 1, true),
+('create_bill', 'Create Bill', auth.uid(), '#059669', 'bg-emerald-600', 2, true),
+('dirf', 'DIRF', auth.uid(), '#DC2626', 'bg-red-600', 3, true),
+('infinite_card', 'Infinite Card', auth.uid(), '#7C3AED', 'bg-violet-600', 4, true),
+('infinite_cash', 'Infinite Cash', auth.uid(), '#EA580C', 'bg-orange-600', 5, true),
+('infinite_cash_limit', 'Cash Limit Request', auth.uid(), '#D97706', 'bg-amber-600', 6, true),
+('instant_settlement', 'Instant Settlement', auth.uid(), '#0D9488', 'bg-teal-600', 7, true),
+('pay_bill', 'Pay Bill', auth.uid(), '#0EA5E9', 'bg-sky-500', 8, true),
+('piselli', 'Piselli', auth.uid(), '#EC4899', 'bg-pink-500', 9, true),
+('pix_credit', 'PIX Credit', auth.uid(), '#10B981', 'bg-emerald-500', 10, true),
+('referral', 'Referral Program', auth.uid(), '#8B5CF6', 'bg-purple-500', 11, true),
+('supercobra', 'Super Cobra', auth.uid(), '#F59E0B', 'bg-yellow-500', 12, true),
+('tap', 'Tap to Pay', auth.uid(), '#EF4444', 'bg-red-500', 13, true)
 ON CONFLICT (name) DO UPDATE SET
   display_name = EXCLUDED.display_name,
+  created_by = EXCLUDED.created_by,
   color = EXCLUDED.color,
   bg_class = EXCLUDED.bg_class,
   sort_order = EXCLUDED.sort_order,
@@ -31,24 +35,25 @@ ON CONFLICT (name) DO UPDATE SET
 -- INSERT SAMPLE SLOT ASSETS
 -- =============================================
 
-INSERT INTO public.slot_assets (name, title, description, video_url, created_at, updated_at) VALUES
-('app_assets_videos_banners_v2_checkout', 'Checkout Experience', 'Streamlined checkout process for CloudWalk payments', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_checkout.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_create_bill', 'Bill Creation', 'Create and manage bills with ease', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_create_bill.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_dirf', 'DIRF Management', 'Annual tax declaration reporting', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_dirf.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_infinite_card', 'Infinite Card', 'Premium card with unlimited benefits', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_infinite_card.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_infinite_cash_can_request_limit', 'Cash Limit Increase', 'Request higher cash withdrawal limits', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_infinite_cash_can_request_limit.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_infinite_cash', 'Infinite Cash', 'Instant cash advances when you need them', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_infinite_cash.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_instant_settlement', 'Instant Settlement', 'Get your money in seconds, not days', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_instant_settlement.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_pay_bill', 'Bill Payment', 'Pay any bill quickly and securely', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_pay_bill.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_piselli', 'Piselli Integration', 'Advanced payment processing features', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_piselli.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_pix_credit', 'PIX Credit', 'Instant credit via PIX payments', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_pix_credit.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_referral', 'Referral Program', 'Earn rewards by referring friends', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_referral.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_supercobra', 'Super Cobra', 'Advanced analytics and reporting', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_supercobra.mp4', NOW(), NOW()),
-('app_assets_videos_banners_v2_tap', 'Tap to Pay', 'Contactless payment solution', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_tap.mp4', NOW(), NOW())
+INSERT INTO public.slot_assets (name, title, description, video_url, created_by, created_at, updated_at) VALUES
+('app_assets_videos_banners_v2_checkout', 'Checkout Experience', 'Streamlined checkout process for CloudWalk payments', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_checkout.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_create_bill', 'Bill Creation', 'Create and manage bills with ease', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_create_bill.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_dirf', 'DIRF Management', 'Annual tax declaration reporting', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_dirf.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_infinite_card', 'Infinite Card', 'Premium card with unlimited benefits', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_infinite_card.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_infinite_cash_can_request_limit', 'Cash Limit Increase', 'Request higher cash withdrawal limits', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_infinite_cash_can_request_limit.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_infinite_cash', 'Infinite Cash', 'Instant cash advances when you need them', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_infinite_cash.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_instant_settlement', 'Instant Settlement', 'Get your money in seconds, not days', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_instant_settlement.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_pay_bill', 'Bill Payment', 'Pay any bill quickly and securely', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_pay_bill.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_piselli', 'Piselli Integration', 'Advanced payment processing features', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_piselli.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_pix_credit', 'PIX Credit', 'Instant credit via PIX payments', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_pix_credit.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_referral', 'Referral Program', 'Earn rewards by referring friends', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_referral.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_supercobra', 'Super Cobra', 'Advanced analytics and reporting', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_supercobra.mp4', auth.uid(), NOW(), NOW()),
+('app_assets_videos_banners_v2_tap', 'Tap to Pay', 'Contactless payment solution', 'https://github.com/AlecrimCloudwalk/simple-slot-assets/raw/main/example%20folder/app_assets_videos_banners_v2_tap.mp4', auth.uid(), NOW(), NOW())
 ON CONFLICT (name) DO UPDATE SET
   title = EXCLUDED.title,
   description = EXCLUDED.description,
   video_url = EXCLUDED.video_url,
+  created_by = EXCLUDED.created_by,
   updated_at = NOW();
 
 -- =============================================
@@ -80,16 +85,18 @@ WITH category_mappings AS (
     (c.name = 'supercobra' AND s.name LIKE '%supercobra%') OR
     (c.name = 'tap' AND s.name LIKE '%tap%')
 )
-INSERT INTO public.category_slots (category_id, slot_asset_id, sort_order, created_at, updated_at)
+INSERT INTO public.category_slots (category_id, slot_asset_id, sort_order, created_by, created_at, updated_at)
 SELECT 
   category_id,
   slot_id,
   1, -- sort_order
+  auth.uid(),
   NOW(),
   NOW()
 FROM category_mappings
 ON CONFLICT (category_id, slot_asset_id) DO UPDATE SET
   sort_order = EXCLUDED.sort_order,
+  created_by = EXCLUDED.created_by,
   updated_at = NOW();
 
 -- =============================================
