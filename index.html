@@ -720,11 +720,11 @@
         .carousel-indicators {
             position: absolute;
             bottom: 0px; /* Set to 0px as requested */
-            left: 21px; /* Add 5px more space on left (16px + 5px) */
-            right: 21px; /* Add 5px more space on right (16px + 5px) */
+            left: 16px; /* Back to 16px as requested */
+            right: 16px; /* Back to 16px as requested */
             display: flex !important; /* Force display */
-            justify-content: center; /* Center the indicators */
-            gap: 5px; /* Balanced gap */
+            justify-content: flex-start; /* Use exact calculated widths and gaps */
+            gap: 3px; /* Smaller gap as requested */
             z-index: 100; /* Higher z-index to ensure visibility */
             pointer-events: auto; /* Ensure clickable */
             background: rgba(255, 0, 0, 0.2); /* DEBUG: Red background to see position */
@@ -733,21 +733,21 @@
         }
 
         .carousel-indicators .indicator {
-            width: 14px; /* Balanced size - between 12px and 16px */
+            width: var(--indicator-width, 14px); /* Dynamic width calculated by JavaScript */
             height: 5px; /* Keep height the same */
             border-radius: 3px; 
             background: rgba(255, 255, 255, 0.8); /* More opaque */
             border: 1px solid rgba(0, 0, 0, 0.4); /* Thinner border */
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Shadow for depth */
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background 0.3s ease, border 0.3s ease; /* Only transition colors, not size */
             display: block !important; /* Force display */
             flex-shrink: 0; /* Prevent shrinking */
         }
 
         .carousel-indicators .indicator.active {
             background: white; /* Fully opaque when active */
-            width: 18px; /* Balanced active size - between 16px and 20px */
+            /* NO width change - removed to prevent shrinking/growing */
             border: 1px solid rgba(0, 0, 0, 0.6); /* Strong border but thinner */
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5); /* Stronger shadow */
         }
@@ -3765,13 +3765,37 @@
                 // Render indicators
                 if (indicators) {
                     indicators.innerHTML = '';
+                    
+                    // Calculate dynamic indicator width
+                    const numIndicators = assetsWithContent.length;
+                    const gapSize = 3; // Must match CSS gap value
+                    
+                    // Calculate available width (subtract left and right positioning from video overlay width)
+                    const videoOverlayWidth = 227; // From CSS .video-overlay width
+                    const indicatorsPadding = 32; // 16px left + 16px right
+                    const availableWidth = videoOverlayWidth - indicatorsPadding;
+                    
+                    // Calculate indicator width: (available_width - (num_indicators - 1) × gap) ÷ num_indicators
+                    const totalGapWidth = (numIndicators - 1) * gapSize;
+                    const indicatorWidth = Math.floor((availableWidth - totalGapWidth) / numIndicators);
+                    
+                    // Set CSS custom property for dynamic width
+                    indicators.style.setProperty('--indicator-width', `${indicatorWidth}px`);
+                    
+                    console.log(`📏 Indicators calculation:`, {
+                        numIndicators,
+                        availableWidth: `${availableWidth}px`,
+                        totalGapWidth: `${totalGapWidth}px`,
+                        calculatedWidth: `${indicatorWidth}px`
+                    });
+                    
                     assetsWithContent.forEach((_, index) => {
                         const indicator = document.createElement('div');
                         indicator.className = `indicator ${index === this.currentSlideIndex ? 'active' : ''}`;
                         indicator.addEventListener('click', () => this.goToSlide(index));
                         indicators.appendChild(indicator);
                     });
-                    console.log(`Created ${assetsWithContent.length} indicators`);
+                    console.log(`Created ${assetsWithContent.length} indicators with ${indicatorWidth}px width each`);
                 }
                 
                 // Reset slide index if needed
