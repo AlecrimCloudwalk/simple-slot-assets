@@ -4425,10 +4425,9 @@
                         video.style.zIndex = '1';
                         
                         // Add error handling for videos
-                        video.onloadstart = () => console.log(`Video ${index} loading:`, video.src);
+                        video.onloadstart = () => {}; // Removed spam logging
                         video.oncanplay = () => {
-                            console.log(`Video ${index} can play:`, video.src);
-                            // Ensure video plays after it can play
+                            // Video is ready to play (removed spam logging)
                             setTimeout(() => {
                                 if (video.paused) {
                                     video.play().catch(e => console.log(`Video ${index} autoplay blocked:`, e));
@@ -4444,7 +4443,7 @@
                         };
                         
                         slide.appendChild(video);
-                        console.log(`Created video slide ${index}:`, video.src);
+                        // Video slide created (removed spam logging)
                     } else if (asset.public_url) {
                         // Image slide with performance optimizations
                         const img = document.createElement('img');
