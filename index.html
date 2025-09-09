@@ -1996,10 +1996,16 @@
             async loadDataDirectAPI() {
                 console.log('📊 Loading data via direct API calls...');
                 
-                // Load categories directly via API
+                // Get user's JWT token for authenticated requests
+                const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
+                if (sessionError || !session) {
+                    throw new Error('No authenticated session for API calls');
+                }
+                
+                // Load categories directly via API with user's JWT token
                 const categoriesResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/categories?is_active=eq.true&order=sort_order.asc&select=id,name,display_name,color,bg_class,sort_order', {
                     headers: {
-                        'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                        'Authorization': `Bearer ${session.access_token}`,  // ✅ USER JWT TOKEN
                         'apikey': this.supabase.supabaseKey,
                         'Content-Type': 'application/json'
                     }
@@ -2016,10 +2022,10 @@
                     throw new Error('No active categories found via API');
                 }
                 
-                // Load category slots directly via API
+                // Load category slots directly via API with user's JWT token
                 const slotsResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/category_slots?is_active=eq.true&order=sort_order.asc&select=id,category_id,slot_name,display_name,sort_order', {
                     headers: {
-                        'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                        'Authorization': `Bearer ${session.access_token}`,  // ✅ USER JWT TOKEN
                         'apikey': this.supabase.supabaseKey,
                         'Content-Type': 'application/json'
                     }
