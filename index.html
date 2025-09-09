@@ -719,37 +719,35 @@
 
         .carousel-indicators {
             position: absolute;
-            bottom: 0px; /* Set to 0px as requested */
-            left: 16px; /* Back to 16px as requested */
-            right: 16px; /* Back to 16px as requested */
-            display: flex !important; /* Force display */
-            justify-content: flex-start; /* Use exact calculated widths and gaps */
-            gap: 3px; /* Smaller gap as requested */
-            z-index: 100; /* Higher z-index to ensure visibility */
-            pointer-events: auto; /* Ensure clickable */
-            background: rgba(255, 0, 0, 0.2); /* DEBUG: Red background to see position */
-            min-height: 20px; /* Ensure it has height */
-            padding: 0; /* Removed padding as requested */
+            bottom: 0px; 
+            left: 16px; 
+            right: 16px; 
+            display: flex !important; 
+            justify-content: center; /* Center the indicators */
+            gap: 4px; /* 4px gap as requested */
+            z-index: 100; 
+            pointer-events: auto; 
+            /* Removed red debug background */
+            min-height: 20px; 
+            padding: 0; 
         }
 
         .carousel-indicators .indicator {
             width: var(--indicator-width, 14px); /* Dynamic width calculated by JavaScript */
-            height: 5px; /* Keep height the same */
+            height: 5px; 
             border-radius: 3px; 
-            background: rgba(255, 255, 255, 0.8); /* More opaque */
-            border: 1px solid rgba(0, 0, 0, 0.4); /* Thinner border */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Shadow for depth */
+            background: rgba(255, 255, 255, 0.6); /* Semi-transparent */
+            /* Removed border/stroke as requested */
             cursor: pointer;
-            transition: background 0.3s ease, border 0.3s ease; /* Only transition colors, not size */
-            display: block !important; /* Force display */
-            flex-shrink: 0; /* Prevent shrinking */
+            transition: background 0.3s ease; /* Only transition background */
+            display: block !important; 
+            flex-shrink: 0; 
         }
 
         .carousel-indicators .indicator.active {
-            background: white; /* Fully opaque when active */
+            background: rgba(255, 255, 255, 0.9); /* More opaque when active */
             /* NO width change - removed to prevent shrinking/growing */
-            border: 1px solid rgba(0, 0, 0, 0.6); /* Strong border but thinner */
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5); /* Stronger shadow */
+            /* No border/stroke as requested */
         }
 
         .preview-controls {
@@ -3621,7 +3619,7 @@
                 this.currentCategoryAssets = categorySlots;
                 this.currentSlideIndex = 0; // Reset to first slide
                 
-                // Update category title
+                // Update category title - start with category name, will be updated by renderCarousel if assets exist
                 document.getElementById('demo-category-title').textContent = selectedCategory;
                 
                 // Update carousel
@@ -3766,9 +3764,17 @@
                 if (indicators) {
                     indicators.innerHTML = '';
                     
+                    // Hide indicators completely if no slots filled
+                    if (assetsWithContent.length === 0) {
+                        indicators.style.display = 'none';
+                        return; // Exit early
+                    } else {
+                        indicators.style.display = 'flex'; // Show indicators
+                    }
+                    
                     // Calculate dynamic indicator width
                     const numIndicators = assetsWithContent.length;
-                    const gapSize = 3; // Must match CSS gap value
+                    const gapSize = 4; // Must match CSS gap value (updated to 4px)
                     
                     // Calculate available width (subtract left and right positioning from video overlay width)
                     const videoOverlayWidth = 227; // From CSS .video-overlay width
@@ -3834,16 +3840,23 @@
                     indicator.classList.toggle('active', index === this.currentSlideIndex);
                 });
                 
-                // Update demo title with current item name
+                // Update demo title with current item description
                 const currentAsset = assetsWithContent[this.currentSlideIndex];
                 const titleElement = document.getElementById('demo-category-title');
                 if (titleElement && currentAsset) {
-                    // Extract clean slot name from the current asset (last part after underscores)
+                    // Find the slot name and get its description
                     const slotName = this.currentCategoryAssets.find(name => this.slots[name] === currentAsset);
-                    const cleanName = slotName ? slotName.split('_').pop().replace(/_/g, ' ') : this.currentCategory;
-                    titleElement.textContent = cleanName;
+                    if (slotName) {
+                        // Extract the base slot name (last part after underscores)
+                        const baseSlotName = slotName.split('_').pop();
+                        // Use the description from SLOT_DESCRIPTIONS
+                        const description = SLOT_DESCRIPTIONS[baseSlotName] || baseSlotName;
+                        titleElement.textContent = description;
+                    } else {
+                        titleElement.textContent = 'Select Category';
+                    }
                 } else if (titleElement) {
-                    titleElement.textContent = this.currentCategory;
+                    titleElement.textContent = 'Select Category';
                 }
                 
                 // Update controls
