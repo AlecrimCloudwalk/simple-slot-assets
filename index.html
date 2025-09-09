@@ -852,8 +852,8 @@
         .carousel-indicators {
             position: absolute;
             bottom: 0px; 
-            left: 16px; 
-            right: 16px; 
+            left: 16px;
+            right: 16px;
             display: flex !important; 
             justify-content: center; /* Center the indicators */
             gap: 3px; /* 4px gap as requested */
@@ -1220,7 +1220,7 @@
         <section class="phone-panel" id="phone-preview-panel">
             <div class="app-preview">
                 <div class="phone-mockup-container">
-                    <div class="phone-mockup">
+                <div class="phone-mockup">
                     <!-- Background Video -->
                     <video class="phone-mockup-video" id="phoneBgVideo" autoplay muted loop playsinline>
                         <source src="./app-bg-video.mp4" type="video/mp4">
@@ -1284,7 +1284,7 @@
             'infinite_card',
             'infinite_cash_can_request_limit',
             'infinite_cash',
-            'instant_settlement', 
+            'instant_settlement',
             'pay_bill',
             'piselli',
             'pix_credit',
@@ -1447,42 +1447,42 @@
                 try {
                     this.isAuthenticating = true;
                     
-                    this.user = session.user;
-                    this.showUserInfo(session.user);
-                    this.showMainContent();
-                    
-                    // Show loading state with informative message
-                    this.showAuthLoading('🔐 Authenticated! Loading your data...');
-                    
-                    // Shorter initial wait since we now have robust auth checking
-                    console.log('🔐 Auth successful, brief wait before loading...');
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    
-                    // Update loading message
-                    this.showAuthLoading('🔍 Running database diagnostics...');
-                    
-                    // Load categories and slots with diagnostic approach
-                    await this.loadCategoriesAndSlots();
-                    
+                            this.user = session.user;
+                            this.showUserInfo(session.user);
+                            this.showMainContent();
+                            
+                                // Show loading state with informative message
+                                this.showAuthLoading('🔐 Authenticated! Loading your data...');
+                                
+                                // Shorter initial wait since we now have robust auth checking
+                                console.log('🔐 Auth successful, brief wait before loading...');
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                
+                                // Update loading message
+                                this.showAuthLoading('🔍 Running database diagnostics...');
+                                
+                                // Load categories and slots with diagnostic approach
+                                await this.loadCategoriesAndSlots();
+                                
                     // Load existing uploaded assets from database
-                    this.showAuthLoading('🎰 Loading your slots...');
-                    await this.loadSlots();
-                    
-                    // Set current category after loading
-                    this.setDefaultCurrentCategory();
-                    
+                                this.showAuthLoading('🎰 Loading your slots...');
+                                await this.loadSlots();
+                                
+                                // Set current category after loading
+                                this.setDefaultCurrentCategory();
+                                
                     console.log('✅ Authentication and data loading complete!');
-                    
-                } catch (loadError) {
-                    console.error('❌ Error during post-auth loading:', loadError);
-                    this.showError('Failed to load data after authentication');
-                } finally {
+                                
+                            } catch (loadError) {
+                                console.error('❌ Error during post-auth loading:', loadError);
+                                this.showError('Failed to load data after authentication');
+                            } finally {
                     // Always hide loading state and reset auth flag
-                    this.hideAuthLoading();
+                                this.hideAuthLoading();
                     this.isAuthenticating = false;
                 }
             }
-            
+
             async checkAuth() {
                 try {
                     console.log('🔐 Checking initial authentication...');
@@ -2228,23 +2228,23 @@
                         `${this.supabase.supabaseUrl}/rest/v1/categories?is_active=eq.true&order=sort_order.asc&select=id,name,display_name,color,bg_class,sort_order`,
                         {
                             method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
-                                'apikey': this.supabase.supabaseKey,
+                    headers: {
+                        'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                        'apikey': this.supabase.supabaseKey,
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json'
-                            }
+                    }
                         }
                     );
-                    
+                
                     if (!response.ok) {
                         throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-                    }
-                    
+                }
+                
                     const categoriesData = await response.json();
                     console.log('📊 Categories loaded via direct fetch:', categoriesData.length, 'items');
-                    
-                    if (!categoriesData || categoriesData.length === 0) {
+                
+                if (!categoriesData || categoriesData.length === 0) {
                         throw new Error('No active categories found in database');
                     }
                     
@@ -2761,16 +2761,16 @@
 
             setDefaultCurrentCategory() {
                 try {
-                    // Try to restore last selected category from localStorage
-                    const savedCategory = localStorage.getItem('cloudwalk-current-category');
-                    
-                    if (savedCategory && CATEGORIES[savedCategory]) {
-                        this.currentCategory = savedCategory;
-                    } else if (this.categories.length > 0) {
-                        // Fallback to first category
-                        this.currentCategory = this.categories[0].display_name;
-                    } else {
-                        this.currentCategory = null;
+                // Try to restore last selected category from localStorage
+                const savedCategory = localStorage.getItem('cloudwalk-current-category');
+                
+                if (savedCategory && CATEGORIES[savedCategory]) {
+                    this.currentCategory = savedCategory;
+                } else if (this.categories.length > 0) {
+                    // Fallback to first category
+                    this.currentCategory = this.categories[0].display_name;
+                } else {
+                    this.currentCategory = null;
                     }
                 } catch (storageError) {
                     console.warn('⚠️ localStorage access failed:', storageError);
@@ -2971,8 +2971,8 @@
                 this.currentCategory = categoryName;
                 
                 try {
-                    // Save current category to localStorage for persistence
-                    localStorage.setItem('cloudwalk-current-category', categoryName);
+                // Save current category to localStorage for persistence
+                localStorage.setItem('cloudwalk-current-category', categoryName);
                 } catch (storageError) {
                     console.warn('⚠️ Failed to save category to localStorage:', storageError);
                 }
@@ -3058,12 +3058,12 @@
                         </div>
                         <div class="slot-voting">
                             <button class="btn btn-vote btn-upvote" onclick="voteAsset('${slotName}', 'upvote')" title="Upvote this asset">
-                                👍 <span id="upvotes-${slotName}">${slotData.votes?.upvotes || 0}</span>
+                                👍 <span id="upvotes-${slotName}">${slotData.upvotes_count || 0}</span>
                             </button>
                             <button class="btn btn-vote btn-downvote" onclick="voteAsset('${slotName}', 'downvote')" title="Downvote this asset">
-                                👎 <span id="downvotes-${slotName}">${slotData.votes?.downvotes || 0}</span>
+                                👎 <span id="downvotes-${slotName}">${slotData.downvotes_count || 0}</span>
                             </button>
-                            ${(slotData.votes?.downvotes || 0) > 0 ? `<button class="btn btn-comments" onclick="showComments('${slotName}')" title="View comments">💬 ${slotData.votes?.comments || 0}</button>` : ''}
+                            ${(slotData.comments_count || 0) > 0 ? `<button class="btn btn-comments" onclick="showComments('${slotName}')" title="View comments">💬 ${slotData.comments_count || 0}</button>` : ''}
                         </div>
                     `;
                 } else {
@@ -3089,7 +3089,7 @@
                 `;
 
                 // Apply downvote styling if asset has downvotes
-                if (slotData && slotData.votes && slotData.votes.downvotes > 0) {
+                if (slotData && (slotData.downvotes_count || 0) > 0) {
                     card.classList.add('has-downvotes');
                 } else {
                     card.classList.remove('has-downvotes');
@@ -3128,19 +3128,12 @@
                     // Reset all category-specific slots
                     Object.values(CATEGORIES).flat().forEach(name => this.slots[name] = null);
                     
-                    // Populate with data
+                    // Populate with data (vote counts are now direct columns)
                     data.forEach(item => {
-                        // Parse votes JSON if it exists
-                        if (item.votes && typeof item.votes === 'string') {
-                            try {
-                                item.votes = JSON.parse(item.votes);
-                            } catch (error) {
-                                console.warn(`Failed to parse votes for ${item.slot_name}:`, error);
-                                item.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {} };
-                            }
-                        } else if (!item.votes) {
-                            item.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {} };
-                        }
+                        // Ensure vote counts are numbers
+                        item.upvotes_count = item.upvotes_count || 0;
+                        item.downvotes_count = item.downvotes_count || 0;
+                        item.comments_count = item.comments_count || 0;
                         
                         this.slots[item.slot_name] = item;
                     });
@@ -3610,12 +3603,12 @@
                                 'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
-                                name: internalName,
-                                display_name: displayName,
-                                description: description || null,
-                                color: color,
+                            name: internalName,
+                            display_name: displayName,
+                            description: description || null,
+                            color: color,
                                 bg_class: null,
-                                sort_order: maxSortOrder + 1,
+                            sort_order: maxSortOrder + 1,
                                 is_active: true,
                                 created_by: this.user?.id || 'unknown'
                             })
@@ -3842,94 +3835,139 @@
                     return;
                 }
 
-                console.log(`🗳️ ${voteType} for slot: ${slotName}`);
+                console.log(`🗳️ ${voteType} for slot: ${slotName} by ${this.user.email}`);
                 
                 try {
-                    // Get current slot data
                     const slotData = this.slots[slotName];
                     if (!slotData) {
                         this.showError('Slot not found');
                         return;
                     }
 
-                    // Initialize votes if not exists
-                    if (!slotData.votes) {
-                        slotData.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {} };
+                    const userEmail = this.user.email;
+                    
+                    // Check if user has existing vote
+                    const existingVoteResponse = await fetch(
+                        `${this.supabase.supabaseUrl}/rest/v1/asset_votes?slot_name=eq.${slotName}&user_email=eq.${userEmail}&select=vote_type`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!existingVoteResponse.ok) {
+                        throw new Error(`Failed to check existing vote: ${existingVoteResponse.status}`);
                     }
 
-                    const userEmail = this.user.email;
-                    const existingVote = slotData.votes.user_votes?.[userEmail];
+                    const existingVotes = await existingVoteResponse.json();
+                    const existingVote = existingVotes.length > 0 ? existingVotes[0].vote_type : null;
 
-                    // Handle vote logic
                     if (existingVote === voteType) {
                         // Remove existing vote
-                        slotData.votes[voteType + 's']--;
-                        delete slotData.votes.user_votes[userEmail];
+                        await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_votes?slot_name=eq.${slotName}&user_email=eq.${userEmail}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json'
+                            }
+                        });
                         console.log(`❌ Removed ${voteType} from ${slotName}`);
                     } else {
-                        // Remove previous vote if exists
-                        if (existingVote) {
-                            slotData.votes[existingVote + 's']--;
-                        }
-                        
-                        // Add new vote
-                        slotData.votes[voteType + 's']++;
-                        slotData.votes.user_votes[userEmail] = voteType;
+                        // Insert or update vote (UPSERT)
+                        const voteData = {
+                            slot_name: slotName,
+                            user_email: userEmail,
+                            vote_type: voteType
+                        };
+
+                        await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_votes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'resolution=merge-duplicates'
+                            },
+                            body: JSON.stringify(voteData)
+                        });
                         console.log(`✅ Added ${voteType} to ${slotName}`);
 
-                        // If downvote and no existing comment, prompt for comment
+                        // If downvote and no existing vote, prompt for comment
                         if (voteType === 'downvote' && !existingVote) {
                             setTimeout(() => this.promptDownvoteComment(slotName), 100);
                         }
                     }
 
-                    // Update in database (simple approach - store votes as JSON in slot_assets)
-                    await this.updateSlotVotes(slotName, slotData.votes);
-
-                    // Update UI
-                    this.updateVoteDisplay(slotName, slotData.votes);
+                    // Refresh slot data to get updated counts (triggers handle the counting)
+                    await this.refreshSlotData(slotName);
                     
-                    // Update slot styling
-                    this.updateSlotStyling(slotName);
-
                 } catch (error) {
                     console.error('❌ Error voting:', error);
                     this.showError(`Failed to ${voteType}: ${error.message}`);
                 }
             }
 
-            async updateSlotVotes(slotName, votes) {
+            async refreshSlotData(slotName) {
                 try {
-                    const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/slot_assets?slot_name=eq.${slotName}`, {
-                        method: 'PATCH',
+                    // Get updated slot data with vote counts
+                    const response = await fetch(
+                        `${this.supabase.supabaseUrl}/rest/v1/slot_assets?slot_name=eq.${slotName}&select=*`, {
                         headers: {
                             'Authorization': `Bearer ${this.supabase.supabaseKey}`,
                             'apikey': this.supabase.supabaseKey,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=minimal'
-                        },
-                        body: JSON.stringify({ votes: JSON.stringify(votes) })
+                            'Content-Type': 'application/json'
+                        }
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Vote update failed: ${response.status}`);
+                        throw new Error(`Failed to refresh slot data: ${response.status}`);
                     }
 
-                    console.log('✅ Votes updated in database');
+                    const data = await response.json();
+                    if (data.length > 0) {
+                        // Update local slot data
+                        this.slots[slotName] = { ...this.slots[slotName], ...data[0] };
+                        
+                        // Update UI displays
+                        this.updateVoteDisplay(slotName, data[0]);
+                        this.updateSlotStyling(slotName);
+                    }
                 } catch (error) {
-                    console.error('❌ Failed to update votes in database:', error);
-                    throw error;
+                    console.error('❌ Failed to refresh slot data:', error);
                 }
             }
 
-            updateVoteDisplay(slotName, votes) {
+            updateVoteDisplay(slotName, slotData) {
                 const upvoteSpan = document.getElementById(`upvotes-${slotName}`);
                 const downvoteSpan = document.getElementById(`downvotes-${slotName}`);
                 
-                if (upvoteSpan) upvoteSpan.textContent = votes.upvotes || 0;
-                if (downvoteSpan) downvoteSpan.textContent = votes.downvotes || 0;
+                if (upvoteSpan) upvoteSpan.textContent = slotData.upvotes_count || 0;
+                if (downvoteSpan) downvoteSpan.textContent = slotData.downvotes_count || 0;
 
-                console.log(`📊 Updated vote display for ${slotName}: ↑${votes.upvotes} ↓${votes.downvotes}`);
+                // Update comment button if it exists
+                const existingCommentBtn = document.querySelector(`[onclick="showComments('${slotName}')"]`);
+                const slotVoting = document.querySelector(`[data-slot="${slotName}"] .slot-voting`);
+                
+                if (slotVoting) {
+                    // Remove existing comment button
+                    if (existingCommentBtn) {
+                        existingCommentBtn.remove();
+                    }
+                    
+                    // Add comment button if there are comments
+                    if ((slotData.comments_count || 0) > 0) {
+                        const commentBtn = document.createElement('button');
+                        commentBtn.className = 'btn btn-comments';
+                        commentBtn.onclick = () => this.showComments(slotName);
+                        commentBtn.title = 'View comments';
+                        commentBtn.innerHTML = `💬 ${slotData.comments_count}`;
+                        slotVoting.appendChild(commentBtn);
+                    }
+                }
+
+                console.log(`📊 Updated vote display for ${slotName}: ↑${slotData.upvotes_count} ↓${slotData.downvotes_count} 💬${slotData.comments_count}`);
             }
 
             updateSlotStyling(slotName) {
@@ -3937,7 +3975,7 @@
                 const slotCard = document.querySelector(`[data-slot="${slotName}"]`);
                 
                 if (slotCard && slotData) {
-                    if (slotData.votes && slotData.votes.downvotes > 0) {
+                    if ((slotData.downvotes_count || 0) > 0) {
                         slotCard.classList.add('has-downvotes');
                     } else {
                         slotCard.classList.remove('has-downvotes');
@@ -3960,26 +3998,31 @@
                 if (!this.user || !comment) return;
 
                 try {
-                    const slotData = this.slots[slotName];
-                    if (!slotData.votes.comments_data) {
-                        slotData.votes.comments_data = [];
-                    }
-
-                    const newComment = {
-                        id: Date.now(),
-                        user: this.user.email,
-                        comment: comment,
-                        timestamp: new Date().toISOString()
+                    const commentData = {
+                        slot_name: slotName,
+                        user_email: this.user.email,
+                        comment: comment
                     };
 
-                    slotData.votes.comments_data.push(newComment);
-                    slotData.votes.comments = slotData.votes.comments_data.length;
+                    const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_comments`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(commentData)
+                    });
 
-                    // Update in database
-                    await this.updateSlotVotes(slotName, slotData.votes);
-                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to add comment: ${response.status}`);
+                    }
+
                     console.log(`💬 Added comment to ${slotName}:`, comment);
                     this.showSuccess('Comment added! 💬');
+
+                    // Refresh slot data to get updated comment count
+                    await this.refreshSlotData(slotName);
 
                 } catch (error) {
                     console.error('❌ Error adding comment:', error);
@@ -3987,45 +4030,65 @@
                 }
             }
 
-            showComments(slotName) {
-                const slotData = this.slots[slotName];
-                if (!slotData || !slotData.votes || !slotData.votes.comments_data) {
-                    this.showError('No comments found');
-                    return;
+            async showComments(slotName) {
+                try {
+                    // Load comments from database
+                    const response = await fetch(
+                        `${this.supabase.supabaseUrl}/rest/v1/asset_comments?slot_name=eq.${slotName}&select=*&order=created_at.desc`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to load comments: ${response.status}`);
+                    }
+
+                    const comments = await response.json();
+                    
+                    if (comments.length === 0) {
+                        this.showError('No comments found');
+                        return;
+                    }
+
+                    let commentsHtml = comments.map(comment => `
+                        <div class="comment-item">
+                            <div class="comment-header">
+                                <strong>${comment.user_email.split('@')[0]}</strong>
+                                <span class="comment-date">${new Date(comment.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div class="comment-text">${comment.comment}</div>
+                        </div>
+                    `).join('');
+
+                    const modal = document.createElement('div');
+                    modal.className = 'modal-overlay';
+                    modal.innerHTML = `
+                        <div class="modal-dialog">
+                            <div class="modal-header">
+                                <h3>💬 Comments - ${slotName.replace(/_/g, ' ')}</h3>
+                                <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="comments-list">
+                                    ${commentsHtml}
+                                </div>
+                                <div class="add-comment-section">
+                                    <textarea id="newComment" placeholder="Add a comment..." rows="3"></textarea>
+                                    <button class="btn btn-primary" onclick="assetManager.addCommentFromModal('${slotName}')">Add Comment</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.appendChild(modal);
+
+                } catch (error) {
+                    console.error('❌ Error loading comments:', error);
+                    this.showError('Failed to load comments');
                 }
-
-                const comments = slotData.votes.comments_data;
-                let commentsHtml = comments.map(comment => `
-                    <div class="comment-item">
-                        <div class="comment-header">
-                            <strong>${comment.user}</strong>
-                            <span class="comment-date">${new Date(comment.timestamp).toLocaleDateString()}</span>
-                        </div>
-                        <div class="comment-text">${comment.comment}</div>
-                    </div>
-                `).join('');
-
-                const modal = document.createElement('div');
-                modal.className = 'modal-overlay';
-                modal.innerHTML = `
-                    <div class="modal-dialog">
-                        <div class="modal-header">
-                            <h3>💬 Comments - ${slotName.replace(/_/g, ' ')}</h3>
-                            <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">✕</button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="comments-list">
-                                ${commentsHtml}
-                            </div>
-                            <div class="add-comment-section">
-                                <textarea id="newComment" placeholder="Add a comment..." rows="3"></textarea>
-                                <button class="btn btn-primary" onclick="assetManager.addCommentFromModal('${slotName}')">Add Comment</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                document.body.appendChild(modal);
             }
 
             async addCommentFromModal(slotName) {
@@ -4042,7 +4105,7 @@
                 
                 // Close modal and refresh
                 document.querySelector('.modal-overlay').remove();
-                this.showComments(slotName); // Reopen to show new comment
+                await this.showComments(slotName); // Reopen to show new comment
             }
 
             editSlotDescription(slotName) {
