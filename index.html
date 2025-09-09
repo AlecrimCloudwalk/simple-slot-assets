@@ -1076,6 +1076,7 @@
             
             <div class="controls">
                 <button class="btn btn-success" onclick="exportAll()">📥 Export All URLs</button>
+                <button class="btn btn-danger" id="deleteCategoryBtn" onclick="deleteCurrentCategory()" style="margin-left: 10px; display: none;">🗑️ Delete Category</button>
             </div>
             
             <div class="stats" id="stats">
@@ -1159,6 +1160,28 @@
             'supercobra',
             'tap'
         ];
+
+        // Generate random attractive colors for categories
+        function generateRandomColor() {
+            const attractiveColors = [
+                '#667eea', // purple-blue
+                '#764ba2', // purple
+                '#f093fb', // pink
+                '#f5576c', // red-pink
+                '#4facfe', // blue
+                '#00f2fe', // cyan
+                '#43e97b', // green
+                '#38f9d7', // teal
+                '#ffecd2', // peach
+                '#fcb69f', // orange
+                '#a8edea', // mint
+                '#fed6e3', // light pink
+                '#d299c2', // mauve
+                '#fef9d7', // yellow
+                '#667eea', // default blue
+            ];
+            return attractiveColors[Math.floor(Math.random() * attractiveColors.length)];
+        }
 
         // Portuguese descriptions for each slot (editable by user later)
         const SLOT_DESCRIPTIONS = {
@@ -2716,8 +2739,15 @@
                     categoriesDiv.appendChild(tab);
                 });
                 
-                // Enable admin buttons for adding categories
+                // Enable admin buttons for adding/deleting categories
                 const canAddCategories = this.user && this.user.email && this.user.email.endsWith('@cloudwalk.io');
+                
+                // Show/hide delete button based on permissions
+                const deleteCategoryBtn = document.getElementById('deleteCategoryBtn');
+                if (deleteCategoryBtn) {
+                    deleteCategoryBtn.style.display = canAddCategories ? 'inline-block' : 'none';
+                }
+                
                 if (canAddCategories) {
                     const addCategoryBtn = document.createElement('button');
                     addCategoryBtn.className = 'category-tab add-category-btn';
@@ -3270,8 +3300,9 @@
                 `;
                 document.body.appendChild(modal);
                 
-                // Focus on the first input
+                // Set random color and focus on the first input
                 setTimeout(() => {
+                    document.getElementById('categoryColor').value = generateRandomColor();
                     document.getElementById('categoryDisplayName').focus();
                 }, 100);
             }
@@ -3713,6 +3744,92 @@
                         console.error('❌ Failed to update category name:', error);
                         this.showError(`Failed to update category name: ${error.message}`);
                     }
+                }
+            }
+
+            async deleteCurrentCategory() {
+                if (!this.currentCategory) {
+                    this.showError('No category selected to delete');
+                    return;
+                }
+                
+                // Find the current category object
+                const category = this.categories.find(cat => cat.display_name === this.currentCategory);
+                if (!category) {
+                    this.showError('Category not found');
+                    return;
+                }
+                
+                // Get assets count for confirmation
+                const categorySlots = CATEGORIES[this.currentCategory] || [];
+                const assetsCount = categorySlots.filter(slotName => this.slots[slotName] !== null).length;
+                
+                const confirmMessage = assetsCount > 0 
+                    ? `⚠️ WARNING: Delete category "${this.currentCategory}"?\n\nThis will permanently delete:\n- The category\n- ${assetsCount} uploaded assets\n- All associated data\n\nThis action CANNOT be undone!`
+                    : `Delete category "${this.currentCategory}"?\n\nThis action cannot be undone.`;
+                
+                if (!confirm(confirmMessage)) {
+                    return;
+                }
+                
+                try {
+                    console.log(`🗑️ Deleting category: "${this.currentCategory}" (ID: ${category.id})`);
+                    
+                    // First delete all associated slot_assets
+                    if (assetsCount > 0) {
+                        console.log(`🗑️ Deleting ${assetsCount} associated assets...`);
+                        const deleteAssetsResponse = await fetch(`${this.supabase.supabaseUrl}/rest/v1/slot_assets?slot_name=like.${category.name}_*`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (!deleteAssetsResponse.ok) {
+                            console.warn(`⚠️ Some assets may not have been deleted: ${deleteAssetsResponse.status}`);
+                        }
+                    }
+                    
+                    // Delete the category from database
+                    const deleteCategoryResponse = await fetch(`${this.supabase.supabaseUrl}/rest/v1/categories?id=eq.${category.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (!deleteCategoryResponse.ok) {
+                        throw new Error(`Failed to delete category: ${deleteCategoryResponse.status}`);
+                    }
+                    
+                    // Remove from local data
+                    this.categories = this.categories.filter(cat => cat.id !== category.id);
+                    delete this.categorySlots[category.id];
+                    delete CATEGORIES[this.currentCategory];
+                    
+                    // Clear slots from this category
+                    categorySlots.forEach(slotName => {
+                        delete this.slots[slotName];
+                    });
+                    
+                    // Switch to first available category
+                    if (this.categories.length > 0) {
+                        this.switchCategory(this.categories[0].display_name);
+                    } else {
+                        this.currentCategory = null;
+                        this.renderCategories();
+                    }
+                    
+                    this.showSuccess(`Category "${category.display_name}" deleted successfully! 🗑️`);
+                    console.log(`✅ Category "${category.display_name}" and ${assetsCount} assets deleted`);
+                    
+                } catch (error) {
+                    console.error('❌ Failed to delete category:', error);
+                    this.showError(`Failed to delete category: ${error.message}`);
                 }
             }
 
@@ -4275,6 +4392,10 @@
 
         function exportAll() {
             assetManager.exportAll();
+        }
+
+        function deleteCurrentCategory() {
+            assetManager.deleteCurrentCategory();
         }
 
         function refreshData() {
