@@ -1106,15 +1106,15 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvdW9sdnNmeHJ1cGF5em1tb21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MzIxMjAsImV4cCI6MjA3MjUwODEyMH0.QsIG3xo5rqOKoiTEbIuzf8_IutgEglJPUiOeFXJQUj4';
         const GITHUB_CLIENT_ID = 'Ov23lilV3kXkuTBByu9H';
         
-        // All 13 slots based on video file names
-        const ALL_SLOTS = [
+        // Fixed slots that ALL categories use - EXACT names from video files
+        const PREDEFINED_SLOTS = [
             'checkout',
             'create_bill',
             'dirf',
             'infinite_card',
             'infinite_cash_can_request_limit',
             'infinite_cash',
-            'instant_settlement',
+            'instant_settlement', 
             'pay_bill',
             'piselli',
             'pix_credit',
@@ -1122,6 +1122,40 @@
             'supercobra',
             'tap'
         ];
+
+        // Portuguese descriptions for each slot (editable by user later)
+        const SLOT_DESCRIPTIONS = {
+            'checkout': 'Finalize suas compras com facilidade',
+            'create_bill': 'Crie cobrancas para seus clientes',
+            'dirf': 'Declaracao do Imposto de Renda',
+            'infinite_card': 'Seu cartao sem limites',
+            'infinite_cash_can_request_limit': 'Solicite aumento do seu limite',
+            'infinite_cash': 'Acesso ilimitado ao seu dinheiro',
+            'instant_settlement': 'Recebimento instantaneo',
+            'pay_bill': 'Pague suas contas rapidamente',
+            'piselli': 'Parcelamento Piselli facilitado',
+            'pix_credit': 'Credito via PIX imediato',
+            'referral': 'Indique amigos e ganhe recompensas',
+            'supercobra': 'Use o Super Cobra para vendas',
+            'tap': 'Pagamentos por aproximacao'
+        };
+
+        // Pretty display names for slots (used in UI)
+        const SLOT_DISPLAY_NAMES = {
+            'checkout': 'Checkout',
+            'create_bill': 'Create Bill',
+            'dirf': 'DIRF',
+            'infinite_card': 'Infinite Card',
+            'infinite_cash_can_request_limit': 'Infinite Cash - Request Limit',
+            'infinite_cash': 'Infinite Cash',
+            'instant_settlement': 'Instant Settlement',
+            'pay_bill': 'Pay Bill',
+            'piselli': 'Piselli',
+            'pix_credit': 'PIX Credit',
+            'referral': 'Referral',
+            'supercobra': 'Super Cobra',
+            'tap': 'Tap to Pay'
+        };
 
         // Dynamic categories and slots will be loaded from database
         let CATEGORIES = {}; // Will be populated from database
@@ -1145,6 +1179,18 @@
 
             async init() {
                 try {
+                    // Load saved slot descriptions from localStorage
+                    try {
+                        const savedDescriptions = localStorage.getItem('slotDescriptions');
+                        if (savedDescriptions) {
+                            const customDescriptions = JSON.parse(savedDescriptions);
+                            Object.assign(SLOT_DESCRIPTIONS, customDescriptions);
+                            console.log('📝 Loaded custom slot descriptions from localStorage');
+                        }
+                    } catch (error) {
+                        console.warn('Failed to load descriptions from localStorage:', error);
+                    }
+                    
                     // Initialize Supabase
                     if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
                         this.showError('Please configure Supabase credentials');
@@ -1215,17 +1261,8 @@
                         }
                     });
                     
-                    // Check authentication (but don't wait for it to avoid race conditions)
-                    // Give auth state listener time to fire first
-                    setTimeout(() => {
-                        if (!this.isAuthenticating && !this.user) {
-                            this.checkAuth().catch(error => {
-                                console.log('⚠️ Initial checkAuth failed, but onAuthStateChange will handle auth:', error.message);
-                            });
-                        } else {
-                            console.log('🔐 Skipping checkAuth - auth already handled by state listener');
-                        }
-                    }, 100);
+                    // DISABLE checkAuth entirely - let onAuthStateChange handle everything
+                    console.log('🔐 checkAuth disabled - onAuthStateChange will handle all authentication');
                     
                     // Set up real-time subscriptions
                     this.setupRealtimeSubscription();
@@ -1961,50 +1998,23 @@
             async loadDataWithActiveFilter() {
                 console.log('📊 Loading with is_active filtering...');
                 
-                try {
-                    // Try SDK first
-                    const { data: categoriesData, error: categoriesError } = await Promise.race([
-                        this.supabase
-                            .from('categories')
-                            .select('id, name, display_name, color, bg_class, sort_order')
-                            .eq('is_active', true)
-                            .order('sort_order', { ascending: true }),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('SDK timeout')), 8000)
-                        )
-                    ]);
-                    
-                    if (categoriesError) throw categoriesError;
-                    
-                    if (!categoriesData || categoriesData.length === 0) {
-                        throw new Error('No active categories found');
-                    }
-                    
-                    const { data: slotsData, error: slotsError } = await Promise.race([
-                        this.supabase
-                            .from('category_slots')
-                            .select('id, category_id, slot_name, display_name, sort_order')
-                            .eq('is_active', true)
-                            .order('sort_order', { ascending: true }),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('SDK timeout')), 8000)
-                        )
-                    ]);
-                    
-                    if (slotsError) throw slotsError;
-                    
-                    return this.processLoadedData(categoriesData, slotsData);
-                    
-                } catch (sdkError) {
-                    console.log('📊 SDK failed, trying backup SDK approach...', sdkError.message);
-                    return await this.loadDataDirectAPI();
-                }
+                // SKIP SDK ENTIRELY - we proved it's causing event loop blocking
+                console.log('📊 SDK bypassed due to proven event loop blocking issues');
+                return await this.loadDataDirectAPI();
             }
             
             async loadDataDirectAPI() {
                 console.log('📊 Loading data via direct fetch (bypassing SDK)...');
                 
                 try {
+                    // Clear previous data
+                    this.categories = [];
+                    this.categorySlots = {};
+                    for (let key in CATEGORIES) {
+                        delete CATEGORIES[key];
+                    }
+                    console.log('🧹 Cleared previous category data');
+                    
                     // Use direct fetch since we know it works from the connection test
                     console.log('📊 Making direct REST API call...');
                     
@@ -2032,11 +2042,53 @@
                         throw new Error('No active categories found in database');
                     }
                     
-                    // Skip slots for now - focus on getting categories working
-                    const slotsData = [];
-                    console.log('📊 Skipping slots query for now');
+                    // Create the new structure: all categories have the same predefined slots
+                    console.log('📊 Creating universal slot structure...');
+                    console.log('📊 PREDEFINED_SLOTS:', PREDEFINED_SLOTS);
                     
-                    return this.processLoadedData(categoriesData, slotsData);
+                    // Process categories with universal slots
+                    categoriesData.forEach(category => {
+                        const categoryInfo = {
+                            id: category.id,
+                            name: category.name,
+                            display_name: category.display_name,
+                            color: category.color || '#6c757d',
+                            bg_class: category.bg_class || '',
+                            sort_order: category.sort_order || 0,
+                            // All categories get the same predefined slots
+                            slots: PREDEFINED_SLOTS.map((slotName, index) => ({
+                                id: `${category.id}_${slotName}`, // Synthetic ID
+                                slot_name: slotName,
+                                display_name: SLOT_DESCRIPTIONS[slotName] || slotName,
+                                sort_order: index
+                            }))
+                        };
+                        
+                        this.categories.push(categoryInfo);
+                        this.categorySlots[category.id] = categoryInfo.slots;
+                        
+                        // Build CATEGORIES lookup with universal slots
+                        const categorySlotNames = PREDEFINED_SLOTS.map(slotName => 
+                            `${category.name}_${slotName}`
+                        );
+                        CATEGORIES[category.display_name] = categorySlotNames;
+                        
+                        console.log(`📊 Category "${category.display_name}" created with ${PREDEFINED_SLOTS.length} slots:`, categorySlotNames);
+                    });
+                    
+                    // Initialize all slots to null for proper rendering
+                    Object.values(CATEGORIES).flat().forEach(slotName => {
+                        if (this.slots[slotName] === undefined) {
+                            this.slots[slotName] = null;
+                        }
+                    });
+                    
+                    console.log(`✅ Successfully processed ${this.categories.length} categories with ${PREDEFINED_SLOTS.length} slots each`);
+                    console.log('📋 Categories structure:', this.categories.map(c => `${c.display_name} (${c.slots.length} slots)`));
+                    console.log('📋 CATEGORIES lookup:', CATEGORIES);
+                    console.log('📋 Total slots initialized:', Object.keys(this.slots).length);
+                    
+                    return true;
                     
                 } catch (error) {
                     console.error('📊 Direct fetch failed:', error);
@@ -2047,34 +2099,17 @@
             async loadDataWithoutActiveFilter() {
                 console.log('📊 Loading without is_active filtering...');
                 
-                const { data: categoriesData, error: categoriesError } = await this.supabase
-                    .from('categories')
-                    .select('id, name, display_name, color, bg_class, sort_order')
-                    .order('sort_order', { ascending: true });
-                
-                if (categoriesError) throw categoriesError;
-                
-                if (!categoriesData || categoriesData.length === 0) {
-                    throw new Error('No categories found');
-                }
-                
-                const { data: slotsData, error: slotsError } = await this.supabase
-                    .from('category_slots')
-                    .select('id, category_id, slot_name, display_name, sort_order')
-                    .order('sort_order', { ascending: true });
-                
-                if (slotsError) throw slotsError;
-                
-                return this.processLoadedData(categoriesData, slotsData);
+                // SKIP SDK ENTIRELY - we proved it's causing event loop blocking
+                console.log('📊 SDK bypassed, using direct API approach');
+                return await this.loadDataDirectAPI();
             }
             
             async loadDataBasicSelectAll() {
                 console.log('📊 Loading with basic select all...');
                 
-                const { data: categoriesData, error: categoriesError } = await this.supabase
-                    .from('categories')
-                    .select('*')
-                    .order('sort_order', { ascending: true });
+                // SKIP SDK ENTIRELY - we proved it's causing event loop blocking
+                console.log('📊 SDK bypassed, using direct API approach');
+                return await this.loadDataDirectAPI();
                 
                 if (categoriesError) throw categoriesError;
                 
@@ -2558,6 +2593,12 @@
                 
                 console.log('Set current category to:', this.currentCategory);
                 
+                // Set default category if none is selected
+                if (!this.currentCategory && this.categories.length > 0) {
+                    console.log('🎯 Setting default category to first category:', this.categories[0].display_name);
+                    this.currentCategory = this.categories[0].display_name;
+                }
+                
                 // Initialize UI after categories are loaded
                 this.renderCategories();
                 
@@ -2761,10 +2802,14 @@
                     });
                 }
                 
-                // Extract clean asset name (last part after underscores)
-                const displayName = slotName.includes('_') ? 
-                    slotName.split('_').pop().replace(/_/g, ' ') : 
-                    slotName.replace(/_/g, ' ');
+                // Extract the actual slot name from category_slotname format
+                const actualSlotName = slotName.includes('_') ? 
+                    slotName.split('_').pop() : 
+                    slotName;
+                
+                // Use pretty display name for slot header
+                const displayName = SLOT_DISPLAY_NAMES[actualSlotName] || 
+                    actualSlotName.replace(/_/g, ' ');
                 
                 // Removed status indicators
                 
@@ -2815,7 +2860,8 @@
                 
                 card.innerHTML = `
                     <div class="slot-header">
-                        <div class="slot-name">${displayName}</div>
+                        <div class="slot-name" title="${displayName}">${displayName}</div>
+                        <button class="btn btn-sm" style="font-size: 0.6rem; padding: 2px 4px; margin-left: 4px;" onclick="editSlotDescription('${actualSlotName}')" title="Edit description">✏️</button>
                     </div>
                     <div class="slot-content" ondrop="handleDrop(event, '${slotName}')" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
                         ${contentHtml}
@@ -3434,6 +3480,32 @@
                 }
             }
 
+            editSlotDescription(slotName) {
+                const currentDescription = SLOT_DESCRIPTIONS[slotName] || slotName;
+                
+                const newDescription = prompt(
+                    `Edit description for ${slotName}:`, 
+                    currentDescription
+                );
+                
+                if (newDescription !== null && newDescription.trim() !== '') {
+                    // Update the global description
+                    SLOT_DESCRIPTIONS[slotName] = newDescription.trim();
+                    
+                    // Re-render all categories to show updated descriptions
+                    this.renderCategories();
+                    
+                    this.showSuccess(`Description updated for ${slotName}! ✏️`);
+                    
+                    // Store in localStorage for persistence
+                    try {
+                        localStorage.setItem('slotDescriptions', JSON.stringify(SLOT_DESCRIPTIONS));
+                    } catch (error) {
+                        console.warn('Failed to save to localStorage:', error);
+                    }
+                }
+            }
+
             setupRealtimeSubscription() {
                 this.supabase
                     .channel('slot_assets')
@@ -3832,6 +3904,26 @@
 
         function removeAsset(slotName) {
             assetManager.removeAsset(slotName);
+        }
+        
+        function editSlotDescription(slotName) {
+            assetManager.editSlotDescription(slotName);
+        }
+        
+        function debugAppState() {
+            console.log('🔍 DEBUG: Current App State');
+            console.log('📊 PREDEFINED_SLOTS:', PREDEFINED_SLOTS);
+            console.log('📊 CATEGORIES lookup:', CATEGORIES);
+            console.log('📊 Categories loaded:', assetManager.categories);
+            console.log('📊 Current category:', assetManager.currentCategory);
+            console.log('📊 All slots:', assetManager.slots);
+            console.log('📊 Category slots mapping:', assetManager.categorySlots);
+            
+            if (assetManager.currentCategory) {
+                const categorySlots = CATEGORIES[assetManager.currentCategory] || [];
+                console.log(`📊 Current category "${assetManager.currentCategory}" slots:`, categorySlots);
+                console.log('📊 Current category slot data:', categorySlots.map(name => ({ name, data: assetManager.slots[name] })));
+            }
         }
 
         async function copyToClipboard(text) {
