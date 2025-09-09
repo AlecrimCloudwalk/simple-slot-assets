@@ -4041,6 +4041,11 @@
                         comment: comment
                     };
 
+                    // COMMENT DEBUGGING
+                    console.log('🔧 DEBUG COMMENT: Comment request details:');
+                    console.log('🔧 DEBUG COMMENT: URL:', `${this.supabase.supabaseUrl}/rest/v1/asset_comments`);
+                    console.log('🔧 DEBUG COMMENT: Body:', JSON.stringify(commentData));
+
                     const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_comments`, {
                         method: 'POST',
                         headers: {
@@ -4051,8 +4056,12 @@
                         body: JSON.stringify(commentData)
                     });
 
+                    console.log('🔧 DEBUG COMMENT: Response status:', response.status);
+                    const responseText = await response.text();
+                    console.log('🔧 DEBUG COMMENT: Response body:', responseText);
+
                     if (!response.ok) {
-                        throw new Error(`Failed to add comment: ${response.status} ${response.statusText}`);
+                        throw new Error(`Failed to add comment: ${response.status} ${response.statusText} - ${responseText}`);
                     }
 
                     console.log(`💬 Added comment to ${slotName}:`, comment);
