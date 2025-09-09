@@ -3241,10 +3241,10 @@
                     card.classList.remove('has-upvotes');
                 }
                 
-                // Setup modal behavior
-                if (slotModalManager) {
-                    slotModalManager.setupSlotCard(card);
-                }
+                // Setup simple hover behavior - only show on enter
+                card.addEventListener('mouseenter', () => {
+                    showSlotModal(card);
+                });
                 
                 return card;
             }
@@ -5221,80 +5221,50 @@
             assetManager.refreshData();
         }
 
-        // Modal management for better hover behavior
-        class SlotModalManager {
-            constructor() {
-                this.activeModal = null;
-                this.mouseLeaveTimeout = null;
-            }
+        // Simple hover management - no loops, no conflicts
+        let activeModal = null;
 
-            showModal(slotCard) {
-                // Clear any pending hide
-                if (this.mouseLeaveTimeout) {
-                    clearTimeout(this.mouseLeaveTimeout);
-                    this.mouseLeaveTimeout = null;
-                }
-
-                // Hide any existing modal
-                this.hideModal();
-
-                // Show new modal
-                this.activeModal = slotCard;
-                slotCard.classList.add('modal-active');
-                document.body.classList.add('slot-modal-open');
-
-                // Add event listener to modal content for proper hover behavior
-                const modalContent = slotCard.querySelector('.slot-content');
-                if (modalContent) {
-                    modalContent.addEventListener('mouseleave', (e) => {
-                        // Only hide if mouse really leaves the modal content area
-                        if (!modalContent.contains(e.relatedTarget)) {
-                            this.hideModal();
-                        }
-                    });
-                }
-            }
-
-            hideModal() {
-                if (this.activeModal) {
-                    this.activeModal.classList.remove('modal-active');
-                    this.activeModal = null;
-                }
-                document.body.classList.remove('slot-modal-open');
-            }
-
-            setupSlotCard(slotCard) {
-                slotCard.addEventListener('mouseenter', () => {
-                    this.showModal(slotCard);
-                });
-
-                slotCard.addEventListener('mouseleave', (e) => {
-                    // Add slight delay to prevent flickering
-                    this.mouseLeaveTimeout = setTimeout(() => {
-                        // Only hide if we're not entering a child element
-                        if (!slotCard.contains(e.relatedTarget)) {
-                            this.hideModal();
-                        }
-                    }, 50);
-                });
+        function showSlotModal(slotCard) {
+            // Hide any existing modal first
+            hideSlotModal();
+            
+            // Show new modal
+            activeModal = slotCard;
+            slotCard.classList.add('modal-active');
+            document.body.classList.add('slot-modal-open');
+            
+            // Add listener to modal content (not the slot card)
+            const modalContent = slotCard.querySelector('.slot-content');
+            if (modalContent) {
+                const leaveHandler = (e) => {
+                    // Only close if really leaving the modal content
+                    if (!modalContent.contains(e.relatedTarget)) {
+                        hideSlotModal();
+                        modalContent.removeEventListener('mouseleave', leaveHandler);
+                    }
+                };
+                modalContent.addEventListener('mouseleave', leaveHandler);
             }
         }
 
-        // Global modal manager
-        let slotModalManager;
+        function hideSlotModal() {
+            if (activeModal) {
+                activeModal.classList.remove('modal-active');
+                activeModal = null;
+            }
+            document.body.classList.remove('slot-modal-open');
+        }
+
+        // Close modal when clicking outside  
+        document.addEventListener('click', (e) => {
+            if (activeModal && !activeModal.contains(e.target)) {
+                hideSlotModal();
+            }
+        });
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', () => {
             assetManager = new CloudWalkAssetManager();
-            slotModalManager = new SlotModalManager();
-            
-            // Setup modal behavior for any existing slot cards
-            setTimeout(() => {
-                const existingSlotCards = document.querySelectorAll('.slot-card');
-                existingSlotCards.forEach(card => {
-                    slotModalManager.setupSlotCard(card);
-                });
-            }, 1000);
             
             // Note: "__cf_bm" cookie warnings in console are from Cloudflare (Supabase CDN)
             // These are bot management cookies and the warnings are harmless but unavoidable
