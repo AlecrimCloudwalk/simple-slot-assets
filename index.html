@@ -222,10 +222,11 @@
             cursor: pointer;
         }
 
-        /* Only show dashed border for empty slots */
+        /* Only show dashed border for empty slots - but make them horizontal too */
         .slot-content:not(.has-asset) {
-            min-height: 200px;
+            aspect-ratio: 1080 / 682;
             border: 2px dashed #ddd;
+            min-width: 150px;
         }
 
         /* Remove border and padding for slots with assets */
@@ -262,7 +263,7 @@
 
         .slot-preview {
             width: 100%;
-            height: auto;
+            aspect-ratio: 1080 / 682;
             object-fit: cover;
             border-radius: 6px;
             display: block;
@@ -286,6 +287,7 @@
             transform-origin: center;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
+            padding: 10px;
         }
         
         /* Ensure all child elements scale together */
@@ -354,7 +356,7 @@
             opacity: 0;
             transition: opacity 0.3s ease;
             position: absolute;
-            top: 4px;
+            top: 8px;
             left: 50%;
             transform: translateX(-50%);
             pointer-events: none;
@@ -375,7 +377,7 @@
             transition: opacity 0.3s ease;
             flex-wrap: wrap;
             position: absolute;
-            bottom: 4px;
+            bottom: 8px;
             left: 50%;
             transform: translateX(-50%);
             pointer-events: none;
@@ -438,6 +440,22 @@
 
         .slot-card.has-downvotes .slot-name {
             color: #721c24;
+            font-weight: 600;
+        }
+
+        /* Visual indicator for upvoted slots */
+        .slot-card.has-upvotes {
+            border-color: #28a745 !important;
+            background: #f5fff5 !important;
+        }
+
+        .slot-card.has-upvotes .slot-header {
+            background: #d4edda;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .slot-card.has-upvotes .slot-name {
+            color: #155724;
             font-weight: 600;
         }
 
@@ -3119,11 +3137,17 @@
                     </div>
                 `;
 
-                // Apply downvote styling if asset has downvotes  
+                // Apply downvote and upvote styling based on vote counts
                 if (slotData && (slotData.downvotes_count || 0) > 0) {
                     card.classList.add('has-downvotes');
                 } else {
                     card.classList.remove('has-downvotes');
+                }
+
+                if (slotData && (slotData.upvotes_count || 0) > 0) {
+                    card.classList.add('has-upvotes');
+                } else {
+                    card.classList.remove('has-upvotes');
                 }
                 
                 return card;
@@ -4038,10 +4062,18 @@
                 const slotCard = document.querySelector(`[data-slot="${slotName}"]`);
                 
                 if (slotCard && slotData) {
+                    // Update downvote styling
                     if ((slotData.downvotes_count || 0) > 0) {
                         slotCard.classList.add('has-downvotes');
                     } else {
                         slotCard.classList.remove('has-downvotes');
+                    }
+
+                    // Update upvote styling
+                    if ((slotData.upvotes_count || 0) > 0) {
+                        slotCard.classList.add('has-upvotes');
+                    } else {
+                        slotCard.classList.remove('has-upvotes');
                     }
                 }
             }
