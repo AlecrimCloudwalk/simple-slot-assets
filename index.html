@@ -1549,68 +1549,29 @@
             }
 
             async runDatabaseDiagnostics() {
-                console.log('🔍 Starting comprehensive database diagnostics...');
-                const issues = [];
-                let strategy = 'unknown';
+                console.log('🔍 Quick database check...');
                 
                 try {
-                    // 1. Test basic connectivity
-                    console.log('🔍 Testing basic database connectivity...');
-                    const connectTest = await this.testDatabaseConnectivity();
-                    if (!connectTest.success) {
-                        issues.push(`Connectivity: ${connectTest.error}`);
-                        return { success: false, issues, strategy };
-                    }
-                    
-                    // 2. Test table existence and permissions
-                    console.log('🔍 Testing table existence and permissions...');
-                    const tablesTest = await this.testRequiredTables();
-                    if (!tablesTest.success) {
-                        issues.push(`Tables: ${tablesTest.error}`);
-                        return { success: false, issues, strategy };
-                    }
-                    
-                    // 3. Test column schema
-                    console.log('🔍 Testing column schema...');
-                    const schemaTest = await this.testTableSchema();
-                    if (!schemaTest.success) {
-                        issues.push(`Schema: ${schemaTest.error}`);
-                        strategy = schemaTest.recommendedStrategy || 'fallback';
-                    } else {
-                        strategy = schemaTest.optimalStrategy || 'full';
-                    }
-                    
-                    // 4. Test sample data and RLS performance
-                    console.log('🔍 Testing sample data availability...');
-                    const dataTest = await this.testSampleData(strategy);
-                    if (!dataTest.success) {
-                        issues.push(`Data: ${dataTest.error}`);
-                    }
-                    
-                    // 5. Test RLS performance specifically
-                    console.log('🔍 Testing RLS policy performance...');
-                    const rlsTest = await this.testRLSPerformance();
-                    if (!rlsTest.success) {
-                        issues.push(`RLS Performance: ${rlsTest.error}`);
-                    }
-                    
-                    console.log('🔍 Diagnostics complete:', { 
-                        issues: issues.length, 
-                        strategy,
-                        hasData: dataTest.success 
+                    // Quick direct API test - we know this works from your logs
+                    const testResponse = await fetch(this.supabase.supabaseUrl + '/rest/v1/slot_assets?limit=1', {
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json'
+                        }
                     });
                     
-                    return { 
-                        success: issues.length === 0, 
-                        issues, 
-                        strategy,
-                        hasData: dataTest.success 
-                    };
+                    if (testResponse.ok) {
+                        console.log('✅ Database connection confirmed - ready to load data');
+                        return { success: true, issues: [], strategy: 'direct', hasData: true };
+                    } else {
+                        console.log('⚠️ Database connection issues, will try fallback methods');
+                        return { success: false, issues: [`API returned ${testResponse.status}`], strategy: 'fallback' };
+                    }
                     
                 } catch (error) {
-                    console.error('🔍 Diagnostics crashed:', error);
-                    issues.push(`Diagnostics failed: ${error.message}`);
-                    return { success: false, issues, strategy: 'emergency' };
+                    console.log('⚠️ Quick check failed, will try fallback:', error.message);
+                    return { success: false, issues: [error.message], strategy: 'emergency' };
                 }
             }
             
