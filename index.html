@@ -3476,28 +3476,59 @@
                 if (!confirm(`Remove asset from ${slotName}?`)) return;
                 
                 try {
+                    console.log(`🗑️ Removing asset from slot: ${slotName}`);
                     const slotData = this.slots[slotName];
                     
-                    // Delete from storage
+                    // Delete from storage using direct API (bypass SDK)
                     if (slotData && slotData.storage_path) {
-                        await this.supabase.storage
-                            .from('slot-assets')
-                            .remove([slotData.storage_path]);
+                        console.log(`🗑️ Deleting file from storage: ${slotData.storage_path}`);
+                        const storageResponse = await fetch(`${this.supabase.supabaseUrl}/storage/v1/object/slot-assets/${slotData.storage_path}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                                'apikey': this.supabase.supabaseKey
+                            }
+                        });
+                        
+                        if (!storageResponse.ok) {
+                            console.warn(`⚠️ Storage delete failed: ${storageResponse.status}, continuing with database delete`);
+                        } else {
+                            console.log(`✅ File deleted from storage`);
+                        }
                     }
                     
-                    // Delete from database
-                    const { error } = await this.supabase
-                        .from('slot_assets')
-                        .delete()
-                        .eq('slot_name', slotName);
+                    // Delete from database using direct API (bypass SDK)
+                    console.log(`🗑️ Deleting from database: slot_name=${slotName}`);
+                    const dbResponse = await fetch(`${this.supabase.supabaseUrl}/rest/v1/slot_assets?slot_name=eq.${slotName}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json'
+                        }
+                    });
                     
-                    if (error) throw error;
+                    if (!dbResponse.ok) {
+                        throw new Error(`Database delete failed: ${dbResponse.status}`);
+                    }
+                    
+                    console.log(`✅ Removed from database`);
+                    
+                    // Update local state
+                    this.slots[slotName] = null;
+                    
+                    // Refresh display
+                    this.renderCategories();
+                    if (this.currentCategory) {
+                        this.updatePhonePreview(this.currentCategory);
+                    }
                     
                     this.showSuccess('Asset removed successfully!');
+                    console.log(`✅ Asset removal complete for ${slotName}`);
                     
                 } catch (error) {
-                    console.error('Remove error:', error);
-                    this.showError('Failed to remove asset');
+                    console.error('🗑️ Remove error:', error);
+                    this.showError(`Failed to remove asset: ${error.message}`);
                 }
             }
 
