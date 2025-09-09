@@ -3123,6 +3123,15 @@
                     const data = await response.json();
                     console.log(`🎰 Loaded ${data.length} existing slot assets from database`);
                     
+                    // DIAGNOSTIC: Check what columns exist in the data
+                    if (data && data.length > 0) {
+                        console.log('🔧 DIAGNOSTIC: First slot data structure:', data[0]);
+                        console.log('🔧 DIAGNOSTIC: Has upvotes_count?', 'upvotes_count' in data[0], data[0].upvotes_count);
+                        console.log('🔧 DIAGNOSTIC: Has downvotes_count?', 'downvotes_count' in data[0], data[0].downvotes_count);  
+                        console.log('🔧 DIAGNOSTIC: Has comments_count?', 'comments_count' in data[0], data[0].comments_count);
+                        console.log('🔧 DIAGNOSTIC: Has votes (JSON)?', 'votes' in data[0], data[0].votes);
+                    }
+                    
                     if (!data || data.length === 0) {
                         console.log('🎰 No existing slot assets found - starting fresh');
                         return;
