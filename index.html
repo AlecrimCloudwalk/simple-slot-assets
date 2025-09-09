@@ -724,7 +724,7 @@
             right: 16px; 
             display: flex !important; 
             justify-content: center; /* Center the indicators */
-            gap: 4px; /* 4px gap as requested */
+            gap: 3px; /* 4px gap as requested */
             z-index: 100; 
             pointer-events: auto; 
             /* Removed red debug background */
@@ -733,7 +733,7 @@
         }
 
         .carousel-indicators .indicator {
-            width: var(--indicator-width, 14px); /* Dynamic width calculated by JavaScript */
+            width: var(--indicator-width, 17px); /* Dynamic width calculated by JavaScript */
             height: 5px; 
             border-radius: 3px; 
             background: rgba(255, 255, 255, 0.6); /* Semi-transparent */
@@ -828,7 +828,6 @@
             font-weight: 600;
             color: #667eea;
             border: 2px solid rgba(102, 126, 234, 0.2);
-            min-width: 60px;
             text-align: center;
         }
 
@@ -1212,6 +1211,8 @@
                 this.currentSlideIndex = 0;
                 this.currentCategoryAssets = [];
                 this.carouselRenderTimeout = null; // Add throttling for carousel renders
+                this.autoPlayInterval = null; // Auto-play timer
+                this.autoPlayDelay = 10000; // 10 seconds between slides
                 this.init();
             }
 
@@ -2779,6 +2780,9 @@
             }
 
             switchCategory(categoryName) {
+                // Stop auto-play when switching categories
+                this.stopAutoPlay();
+                
                 this.currentCategory = categoryName;
                 
                 try {
@@ -3774,7 +3778,7 @@
                     
                     // Calculate dynamic indicator width
                     const numIndicators = assetsWithContent.length;
-                    const gapSize = 4; // Must match CSS gap value (updated to 4px)
+                    const gapSize = 3; // Must match CSS gap value (updated to 3px)
                     
                     // Calculate available width (subtract left and right positioning from video overlay width)
                     const videoOverlayWidth = 227; // From CSS .video-overlay width
@@ -3798,7 +3802,7 @@
                     assetsWithContent.forEach((_, index) => {
                         const indicator = document.createElement('div');
                         indicator.className = `indicator ${index === this.currentSlideIndex ? 'active' : ''}`;
-                        indicator.addEventListener('click', () => this.goToSlide(index));
+                        indicator.addEventListener('click', () => this.goToSlide(index, false)); // false = user interaction
                         indicators.appendChild(indicator);
                     });
                     console.log(`Created ${assetsWithContent.length} indicators with ${indicatorWidth}px width each`);
@@ -3811,15 +3815,23 @@
                 
                 // Set initial transform
                 this.updateSlidePosition();
+                
+                // Start auto-play if there are multiple slides
+                this.startAutoPlay();
             }
 
-            goToSlide(index) {
+            goToSlide(index, isAutoPlay = false) {
                 const totalSlides = (this.displayAssets || []).length;
                 if (totalSlides === 0) return;
                 if (index < 0 || index >= totalSlides) return;
                 
                 this.currentSlideIndex = index;
                 this.updateSlidePosition();
+                
+                // If this is manual user interaction, pause and restart auto-play
+                if (!isAutoPlay) {
+                    this.restartAutoPlay();
+                }
             }
 
             updateSlidePosition() {
@@ -3849,14 +3861,15 @@
                     if (slotName) {
                         // Extract the base slot name (last part after underscores)
                         const baseSlotName = slotName.split('_').pop();
-                        // Use the description from SLOT_DESCRIPTIONS
-                        const description = SLOT_DESCRIPTIONS[baseSlotName] || baseSlotName;
+                        // Use the description from SLOT_DESCRIPTIONS with better fallback
+                        const description = SLOT_DESCRIPTIONS[baseSlotName] || SLOT_DESCRIPTIONS[slotName] || `Use ${baseSlotName.replace(/_/g, ' ')}`;
                         titleElement.textContent = description;
+                        console.log(`📱 Display text: ${baseSlotName} → "${description}"`);
                     } else {
-                        titleElement.textContent = 'Select Category';
+                        titleElement.textContent = 'Selecione uma categoria';
                     }
                 } else if (titleElement) {
-                    titleElement.textContent = 'Select Category';
+                    titleElement.textContent = 'Selecione uma categoria';
                 }
                 
                 // Update controls
@@ -3881,8 +3894,46 @@
                 this.goToSlide(this.currentSlideIndex - 1);
             }
 
-            nextSlide() {
-                this.goToSlide(this.currentSlideIndex + 1);
+            nextSlide(isAutoPlay = false) {
+                const totalSlides = (this.displayAssets || []).length;
+                if (totalSlides === 0) return;
+                
+                // Loop back to beginning if at last slide
+                if (this.currentSlideIndex >= totalSlides - 1) {
+                    this.goToSlide(0, isAutoPlay);
+                } else {
+                    this.goToSlide(this.currentSlideIndex + 1, isAutoPlay);
+                }
+            }
+
+            // Auto-play functionality
+            startAutoPlay() {
+                this.stopAutoPlay(); // Clear any existing timer
+                
+                const totalSlides = (this.displayAssets || []).length;
+                if (totalSlides <= 1) return; // Don't auto-play for single or no slides
+                
+                this.autoPlayInterval = setInterval(() => {
+                    this.nextSlide(true); // Pass true to indicate this is auto-play
+                }, this.autoPlayDelay);
+                
+                console.log(`🎬 Auto-play started: ${this.autoPlayDelay/1000}s per slide`);
+            }
+
+            stopAutoPlay() {
+                if (this.autoPlayInterval) {
+                    clearInterval(this.autoPlayInterval);
+                    this.autoPlayInterval = null;
+                    console.log('⏸️ Auto-play stopped');
+                }
+            }
+
+            restartAutoPlay() {
+                // Restart auto-play after user interaction
+                this.stopAutoPlay();
+                setTimeout(() => {
+                    this.startAutoPlay();
+                }, 2000); // Wait 2 seconds after user interaction before resuming
             }
 
             updateCarouselControls() {
