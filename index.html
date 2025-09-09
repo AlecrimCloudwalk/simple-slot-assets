@@ -2857,18 +2857,17 @@
 
             async loadSlots() {
                 try {
-                    // Use direct API to avoid SDK timeout issues
+                    // Use EXACT same pattern as categories loading (which works)
                     console.log('🎰 Loading existing slot assets from database...');
                     
-                    const session = await this.supabase.auth.getSession();
-                    const headers = {
-                        'apikey': this.supabase.supabaseKey,
-                        'Authorization': session.data.session ? `Bearer ${session.data.session.access_token}` : `Bearer ${this.supabase.supabaseKey}`,
-                        'Content-Type': 'application/json'
-                    };
-                    
+                    console.log('🎰 Making API call to load slot_assets...');
                     const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/slot_assets?select=*`, {
-                        headers
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json',
+                        }
                     });
                     
                     if (!response.ok) {
@@ -2906,8 +2905,10 @@
                     }
                     
                 } catch (error) {
-                    console.error('Error loading slots:', error);
-                    this.showError('Failed to load slot data');
+                    console.error('🎰 Error loading slots:', error);
+                    console.log('🎰 Slots loading failed - uploads will work but won\'t persist on refresh');
+                    // Show error so user knows persistence isn't working
+                    this.showError(`Failed to load existing assets: ${error.message}`);
                 }
             }
 
