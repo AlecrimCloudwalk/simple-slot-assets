@@ -277,6 +277,8 @@
             border-radius: 8px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             transform-origin: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
         }
         
         /* Ensure all child elements scale together */
@@ -1319,6 +1321,7 @@
         const SLOT_DESCRIPTIONS = {
             'checkout': 'Finalize suas compras com facilidade',
             'create_bill': 'Crie cobrancas para seus clientes',
+            'bill': 'Gerencie suas contas com praticidade',
             'dirf': 'Declaracao do Imposto de Renda',
             'infinite_card': 'Seu cartao sem limites',
             'infinite_cash_can_request_limit': 'Solicite aumento do seu limite',
@@ -3039,7 +3042,7 @@
                         )
                     );
                     const loadingIndicator = isUploading ? '<div style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.7);color:white;padding:2px 6px;border-radius:3px;font-size:0.7rem;">📤 Uploading...</div>' : '';
-                    const urlField = isUploading ? '<div class="slot-url" style="background:#fff3cd;color:#856404;">Upload in progress...</div>' : `<input type="text" class="slot-url" value="${slotData.public_url}" readonly onclick="copyToClipboard('${slotData.public_url}')" style="cursor:pointer" title="Click to copy URL">`;
+                    const urlField = isUploading ? '<div class="slot-url" style="background:#fff3cd;color:#856404;">Upload in progress...</div>' : `<button class="btn btn-secondary" onclick="copyToClipboard('${slotData.public_url}')" style="font-size: 0.7rem; padding: 2px 6px; margin-top: 2px;" title="Copy asset URL">🔗 Copy Link</button>`;
                     
                     const previewElement = isVideo ? 
                         `<video src="${slotData.public_url}" class="slot-preview" muted loop autoplay playsinline loading="lazy"></video>` :
@@ -3058,12 +3061,12 @@
                         </div>
                         <div class="slot-voting">
                             <button class="btn btn-vote btn-upvote" onclick="voteAsset('${slotName}', 'upvote')" title="Upvote this asset">
-                                👍 <span id="upvotes-${slotName}">${slotData.upvotes_count || 0}</span>
+                                👍 <span id="upvotes-${slotName}">${slotData.votes?.upvotes || 0}</span>
                             </button>
                             <button class="btn btn-vote btn-downvote" onclick="voteAsset('${slotName}', 'downvote')" title="Downvote this asset">
-                                👎 <span id="downvotes-${slotName}">${slotData.downvotes_count || 0}</span>
+                                👎 <span id="downvotes-${slotName}">${slotData.votes?.downvotes || 0}</span>
                             </button>
-                            ${(slotData.comments_count || 0) > 0 ? `<button class="btn btn-comments" onclick="showComments('${slotName}')" title="View comments">💬 ${slotData.comments_count || 0}</button>` : ''}
+                            ${(slotData.votes?.comments || 0) > 0 ? `<button class="btn btn-comments" onclick="showComments('${slotName}')" title="View comments">💬 ${slotData.votes?.comments || 0}</button>` : ''}
                         </div>
                     `;
                 } else {
@@ -3089,7 +3092,7 @@
                 `;
 
                 // Apply downvote styling if asset has downvotes
-                if (slotData && (slotData.downvotes_count || 0) > 0) {
+                if (slotData && slotData.votes && slotData.votes.downvotes > 0) {
                     card.classList.add('has-downvotes');
                 } else {
                     card.classList.remove('has-downvotes');
@@ -3128,12 +3131,19 @@
                     // Reset all category-specific slots
                     Object.values(CATEGORIES).flat().forEach(name => this.slots[name] = null);
                     
-                    // Populate with data (vote counts are now direct columns)
+                    // Populate with data (parse JSON votes)
                     data.forEach(item => {
-                        // Ensure vote counts are numbers
-                        item.upvotes_count = item.upvotes_count || 0;
-                        item.downvotes_count = item.downvotes_count || 0;
-                        item.comments_count = item.comments_count || 0;
+                        // Parse votes JSON if it exists
+                        if (item.votes && typeof item.votes === 'string') {
+                            try {
+                                item.votes = JSON.parse(item.votes);
+                            } catch (error) {
+                                console.warn(`Failed to parse votes for ${item.slot_name}:`, error);
+                                item.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {}, comments_data: [] };
+                            }
+                        } else if (!item.votes) {
+                            item.votes = { upvotes: 0, downvotes: 0, comments: 0, user_votes: {}, comments_data: [] };
+                        }
                         
                         this.slots[item.slot_name] = item;
                     });
@@ -3909,42 +3919,36 @@
                 }
             }
 
-            async refreshSlotData(slotName) {
+            async updateSlotVotesJSON(slotName, votes) {
                 try {
-                    // Get updated slot data with vote counts
-                    const response = await fetch(
-                        `${this.supabase.supabaseUrl}/rest/v1/slot_assets?slot_name=eq.${slotName}&select=*`, {
+                    const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/slot_assets?slot_name=eq.${slotName}`, {
+                        method: 'PATCH',
                         headers: {
                             'Authorization': `Bearer ${this.supabase.supabaseKey}`,
                             'apikey': this.supabase.supabaseKey,
-                            'Content-Type': 'application/json'
-                        }
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({ votes: JSON.stringify(votes) })
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Failed to refresh slot data: ${response.status}`);
+                        throw new Error(`Vote update failed: ${response.status}`);
                     }
 
-                    const data = await response.json();
-                    if (data.length > 0) {
-                        // Update local slot data
-                        this.slots[slotName] = { ...this.slots[slotName], ...data[0] };
-                        
-                        // Update UI displays
-                        this.updateVoteDisplay(slotName, data[0]);
-                        this.updateSlotStyling(slotName);
-                    }
+                    console.log('✅ Votes updated in database');
                 } catch (error) {
-                    console.error('❌ Failed to refresh slot data:', error);
+                    console.error('❌ Failed to update votes in database:', error);
+                    throw error;
                 }
             }
 
-            updateVoteDisplay(slotName, slotData) {
+            updateVoteDisplayJSON(slotName, votes) {
                 const upvoteSpan = document.getElementById(`upvotes-${slotName}`);
                 const downvoteSpan = document.getElementById(`downvotes-${slotName}`);
                 
-                if (upvoteSpan) upvoteSpan.textContent = slotData.upvotes_count || 0;
-                if (downvoteSpan) downvoteSpan.textContent = slotData.downvotes_count || 0;
+                if (upvoteSpan) upvoteSpan.textContent = votes.upvotes || 0;
+                if (downvoteSpan) downvoteSpan.textContent = votes.downvotes || 0;
 
                 // Update comment button if it exists
                 const existingCommentBtn = document.querySelector(`[onclick="showComments('${slotName}')"]`);
@@ -3957,17 +3961,17 @@
                     }
                     
                     // Add comment button if there are comments
-                    if ((slotData.comments_count || 0) > 0) {
+                    if ((votes.comments || 0) > 0) {
                         const commentBtn = document.createElement('button');
                         commentBtn.className = 'btn btn-comments';
                         commentBtn.onclick = () => this.showComments(slotName);
                         commentBtn.title = 'View comments';
-                        commentBtn.innerHTML = `💬 ${slotData.comments_count}`;
+                        commentBtn.innerHTML = `💬 ${votes.comments}`;
                         slotVoting.appendChild(commentBtn);
                     }
                 }
 
-                console.log(`📊 Updated vote display for ${slotName}: ↑${slotData.upvotes_count} ↓${slotData.downvotes_count} 💬${slotData.comments_count}`);
+                console.log(`📊 Updated vote display for ${slotName}: ↑${votes.upvotes} ↓${votes.downvotes} 💬${votes.comments}`);
             }
 
             updateSlotStyling(slotName) {
@@ -3975,7 +3979,7 @@
                 const slotCard = document.querySelector(`[data-slot="${slotName}"]`);
                 
                 if (slotCard && slotData) {
-                    if ((slotData.downvotes_count || 0) > 0) {
+                    if (slotData.votes && slotData.votes.downvotes > 0) {
                         slotCard.classList.add('has-downvotes');
                     } else {
                         slotCard.classList.remove('has-downvotes');
@@ -3998,31 +4002,26 @@
                 if (!this.user || !comment) return;
 
                 try {
-                    const commentData = {
-                        slot_name: slotName,
-                        user_email: this.user.email,
-                        comment: comment
-                    };
-
-                    const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_comments`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
-                            'apikey': this.supabase.supabaseKey,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(commentData)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Failed to add comment: ${response.status}`);
+                    const slotData = this.slots[slotName];
+                    if (!slotData.votes.comments_data) {
+                        slotData.votes.comments_data = [];
                     }
 
+                    const newComment = {
+                        id: Date.now(),
+                        user: this.user.email,
+                        comment: comment,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    slotData.votes.comments_data.push(newComment);
+                    slotData.votes.comments = slotData.votes.comments_data.length;
+
+                    // Update in database using JSON approach
+                    await this.updateSlotVotesJSON(slotName, slotData.votes);
+                    
                     console.log(`💬 Added comment to ${slotName}:`, comment);
                     this.showSuccess('Comment added! 💬');
-
-                    // Refresh slot data to get updated comment count
-                    await this.refreshSlotData(slotName);
 
                 } catch (error) {
                     console.error('❌ Error adding comment:', error);
@@ -4030,65 +4029,45 @@
                 }
             }
 
-            async showComments(slotName) {
-                try {
-                    // Load comments from database
-                    const response = await fetch(
-                        `${this.supabase.supabaseUrl}/rest/v1/asset_comments?slot_name=eq.${slotName}&select=*&order=created_at.desc`, {
-                        headers: {
-                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
-                            'apikey': this.supabase.supabaseKey,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Failed to load comments: ${response.status}`);
-                    }
-
-                    const comments = await response.json();
-                    
-                    if (comments.length === 0) {
-                        this.showError('No comments found');
-                        return;
-                    }
-
-                    let commentsHtml = comments.map(comment => `
-                        <div class="comment-item">
-                            <div class="comment-header">
-                                <strong>${comment.user_email.split('@')[0]}</strong>
-                                <span class="comment-date">${new Date(comment.created_at).toLocaleDateString()}</span>
-                            </div>
-                            <div class="comment-text">${comment.comment}</div>
-                        </div>
-                    `).join('');
-
-                    const modal = document.createElement('div');
-                    modal.className = 'modal-overlay';
-                    modal.innerHTML = `
-                        <div class="modal-dialog">
-                            <div class="modal-header">
-                                <h3>💬 Comments - ${slotName.replace(/_/g, ' ')}</h3>
-                                <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">✕</button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="comments-list">
-                                    ${commentsHtml}
-                                </div>
-                                <div class="add-comment-section">
-                                    <textarea id="newComment" placeholder="Add a comment..." rows="3"></textarea>
-                                    <button class="btn btn-primary" onclick="assetManager.addCommentFromModal('${slotName}')">Add Comment</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    document.body.appendChild(modal);
-
-                } catch (error) {
-                    console.error('❌ Error loading comments:', error);
-                    this.showError('Failed to load comments');
+            showComments(slotName) {
+                const slotData = this.slots[slotName];
+                if (!slotData || !slotData.votes || !slotData.votes.comments_data || slotData.votes.comments_data.length === 0) {
+                    this.showError('No comments found');
+                    return;
                 }
+
+                const comments = slotData.votes.comments_data;
+                let commentsHtml = comments.map(comment => `
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <strong>${comment.user.split('@')[0]}</strong>
+                            <span class="comment-date">${new Date(comment.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        <div class="comment-text">${comment.comment}</div>
+                    </div>
+                `).join('');
+
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-dialog">
+                        <div class="modal-header">
+                            <h3>💬 Comments - ${slotName.replace(/_/g, ' ')}</h3>
+                            <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="comments-list">
+                                ${commentsHtml}
+                            </div>
+                            <div class="add-comment-section">
+                                <textarea id="newComment" placeholder="Add a comment..." rows="3"></textarea>
+                                <button class="btn btn-primary" onclick="assetManager.addCommentFromModal('${slotName}')">Add Comment</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
             }
 
             async addCommentFromModal(slotName) {
@@ -4105,7 +4084,7 @@
                 
                 // Close modal and refresh
                 document.querySelector('.modal-overlay').remove();
-                await this.showComments(slotName); // Reopen to show new comment
+                this.showComments(slotName); // Reopen to show new comment
             }
 
             editSlotDescription(slotName) {
