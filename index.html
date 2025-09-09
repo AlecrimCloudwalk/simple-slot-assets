@@ -1570,15 +1570,15 @@
                     
                     if (testResponse.ok) {
                         console.log('✅ Database connection confirmed - ready to load data');
-                        return { success: true, issues: [], strategy: 'full', hasData: true };
+                        return { success: true, issues: [], strategy: 'full_with_active_filter', hasData: true };
                     } else {
                         console.log('⚠️ Database connection issues, will try fallback methods');
-                        return { success: false, issues: [`API returned ${testResponse.status}`], strategy: 'fallback' };
+                        return { success: false, issues: [`API returned ${testResponse.status}`], strategy: 'basic_select_all' };
                     }
                     
                 } catch (error) {
                     console.log('⚠️ Quick check failed, will try fallback:', error.message);
-                    return { success: false, issues: [error.message], strategy: 'emergency' };
+                    return { success: false, issues: [error.message], strategy: 'basic_select_all' };
                 }
             }
             
