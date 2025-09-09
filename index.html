@@ -1134,6 +1134,7 @@
                 this.user = null;
                 this.slots = {};
                 this.categories = [];
+                this.isAuthenticating = false;
                 this.categorySlots = {};
                 this.currentCategory = null; // Will be set after categories are loaded
                 this.currentSlideIndex = 0;
@@ -1156,6 +1157,13 @@
                     this.supabase.auth.onAuthStateChange(async (event, session) => {
                         console.log('🔐 Auth state changed:', event, session?.user?.email);
                         if (event === 'SIGNED_IN' && session?.user) {
+                            // Prevent duplicate auth handling
+                            if (this.isAuthenticating) {
+                                console.log('🔐 Auth already in progress, skipping duplicate...');
+                                return;
+                            }
+                            this.isAuthenticating = true;
+                            
                             this.user = session.user;
                             this.showUserInfo(session.user);
                             this.showMainContent();
@@ -1181,21 +1189,15 @@
                                 // Set current category after loading
                                 this.setDefaultCurrentCategory();
                                 
-                                // DISABLED: Auto-refresh to prevent rate limiting
-                                // setTimeout(async () => {
-                                //     try {
-                                //         await this.loadSlots();
-                                //     } catch (refreshError) {
-                                //         console.log('⚠️ Auto-refresh failed:', refreshError);
-                                //     }
-                                // }, 3000);
+                                console.log('✅ Authentication and data loading complete!');
                                 
                             } catch (loadError) {
                                 console.error('❌ Error during post-auth loading:', loadError);
                                 this.showError('Failed to load data after authentication');
                             } finally {
-                                // Always hide loading state
+                                // Always hide loading state and reset auth flag
                                 this.hideAuthLoading();
+                                this.isAuthenticating = false;
                             }
                             
                         } else if (event === 'SIGNED_OUT') {
@@ -1205,8 +1207,10 @@
                         }
                     });
                     
-                    // Check authentication
-                    await this.checkAuth();
+                    // Check authentication (but don't wait for it to avoid race conditions)
+                    this.checkAuth().catch(error => {
+                        console.log('⚠️ Initial checkAuth failed, but onAuthStateChange will handle auth:', error.message);
+                    });
                     
                     // Set up real-time subscriptions
                     this.setupRealtimeSubscription();
@@ -1224,6 +1228,12 @@
             async checkAuth() {
                 try {
                     console.log('🔐 Checking initial authentication...');
+                    
+                    // Don't run if auth is already in progress
+                    if (this.isAuthenticating) {
+                        console.log('🔐 Auth already in progress via onAuthStateChange, skipping checkAuth...');
+                        return;
+                    }
                     
                     // Add timeout protection for Supabase calls
                     const timeout = (ms, operation) => {
