@@ -445,6 +445,13 @@
             font-size: 0.8rem;
         }
 
+        .comment-header .btn {
+            padding: 2px 6px;
+            font-size: 12px;
+            margin-left: 10px;
+            min-width: 30px;
+        }
+
         .comment-date {
             color: #6c757d;
             font-size: 0.7rem;
@@ -4079,6 +4086,8 @@
             async showComments(slotName) {
                 try {
                     // Load comments from the asset_comments table
+                    console.log('💬 DEBUG: Loading comments for slot:', slotName);
+                    
                     const response = await fetch(
                         `${this.supabase.supabaseUrl}/rest/v1/asset_comments?slot_name=eq.${slotName}&select=*&order=created_at.desc`, {
                         headers: {
@@ -4088,11 +4097,16 @@
                         }
                     });
 
+                    console.log('💬 DEBUG: Comments response status:', response.status);
+
                     if (!response.ok) {
-                        throw new Error(`Failed to load comments: ${response.status}`);
+                        const errorText = await response.text();
+                        console.log('💬 DEBUG: Comments error:', errorText);
+                        throw new Error(`Failed to load comments: ${response.status} - ${errorText}`);
                     }
 
                     const comments = await response.json();
+                    console.log('💬 DEBUG: Loaded comments:', comments.length, comments);
                     
                     if (comments.length === 0) {
                         this.showError('No comments found');
@@ -4104,6 +4118,7 @@
                             <div class="comment-header">
                                 <strong>${comment.user_email.split('@')[0]}</strong>
                                 <span class="comment-date">${new Date(comment.created_at).toLocaleDateString()}</span>
+                                <button class="btn btn-sm btn-danger" onclick="assetManager.deleteComment(${comment.id}, '${slotName}')" title="Delete comment">🗑️</button>
                             </div>
                             <div class="comment-text">${comment.comment}</div>
                         </div>
@@ -4152,6 +4167,44 @@
                 // Close modal and refresh
                 document.querySelector('.modal-overlay').remove();
                 await this.showComments(slotName); // Reopen to show new comment
+            }
+
+            async deleteComment(commentId, slotName) {
+                if (!confirm('🗑️ Delete this comment? This action cannot be undone.')) {
+                    return;
+                }
+
+                try {
+                    console.log('🗑️ DEBUG: Deleting comment:', commentId, 'from slot:', slotName);
+
+                    const response = await fetch(`${this.supabase.supabaseUrl}/rest/v1/asset_comments?id=eq.${commentId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${this.supabase.supabaseKey}`,
+                            'apikey': this.supabase.supabaseKey,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    console.log('🗑️ DEBUG: Delete response status:', response.status);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.log('🗑️ DEBUG: Delete error:', errorText);
+                        throw new Error(`Failed to delete comment: ${response.status} - ${errorText}`);
+                    }
+
+                    console.log('✅ Comment deleted successfully');
+                    this.showSuccess('Comment deleted! 🗑️');
+
+                    // Close modal and refresh
+                    document.querySelector('.modal-overlay').remove();
+                    await this.showComments(slotName); // Reopen to show updated comments
+
+                } catch (error) {
+                    console.error('❌ Error deleting comment:', error);
+                    this.showError('Failed to delete comment');
+                }
             }
 
             editSlotDescription(slotName) {
