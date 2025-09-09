@@ -3827,6 +3827,12 @@
                     this.showSuccess(`Category "${category.display_name}" deleted successfully! 🗑️`);
                     console.log(`✅ Category "${category.display_name}" and ${assetsCount} assets deleted`);
                     
+                    // Reload page after successful deletion to avoid viewing deleted category
+                    setTimeout(() => {
+                        console.log('🔄 Reloading page after category deletion...');
+                        window.location.reload();
+                    }, 2000); // 2 second delay to show success message
+                    
                 } catch (error) {
                     console.error('❌ Failed to delete category:', error);
                     this.showError(`Failed to delete category: ${error.message}`);
@@ -4149,7 +4155,18 @@
             }
 
             previousSlide() {
-                this.goToSlide(this.currentSlideIndex - 1);
+                const totalSlides = (this.displayAssets || []).length;
+                if (totalSlides === 0) return;
+                
+                // Loop to last slide if at first slide
+                if (this.currentSlideIndex <= 0) {
+                    this.goToSlide(totalSlides - 1, false); // false = user interaction
+                } else {
+                    this.goToSlide(this.currentSlideIndex - 1, false); // false = user interaction
+                }
+                
+                // Restart auto-play since this is user interaction
+                this.restartAutoPlay();
             }
 
             nextSlide(isAutoPlay = false) {
@@ -4161,6 +4178,11 @@
                     this.goToSlide(0, isAutoPlay);
                 } else {
                     this.goToSlide(this.currentSlideIndex + 1, isAutoPlay);
+                }
+                
+                // If this is manual user interaction, pause and restart auto-play
+                if (!isAutoPlay) {
+                    this.restartAutoPlay();
                 }
             }
 
@@ -4203,8 +4225,9 @@
                 const totalSlides = (this.displayAssets || []).length;
                 
                 if (prevBtn && nextBtn && indicator) {
-                    prevBtn.disabled = this.currentSlideIndex === 0 || totalSlides === 0;
-                    nextBtn.disabled = this.currentSlideIndex === totalSlides - 1 || totalSlides === 0;
+                    // Enable circular navigation - only disable if no slides at all
+                    prevBtn.disabled = totalSlides === 0;
+                    nextBtn.disabled = totalSlides === 0;
                     
                     indicator.textContent = totalSlides === 0 ? '0/0' : `${this.currentSlideIndex + 1}/${totalSlides}`;
                 }
