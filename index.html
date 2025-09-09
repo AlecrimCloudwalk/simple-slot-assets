@@ -486,25 +486,32 @@
             color: #333;
         }
 
+        /* Phone mockup container - scales as one unit */
+        .phone-mockup-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+        }
+
         .phone-mockup {
             position: relative;
-            width: 100%;
-            max-width: 290px;
-            aspect-ratio: 290/600; /* Maintain phone proportions */
-            height: auto;
-            max-height: calc(100vh - 120px); /* Leave space for controls */
-            background: transparent;
-            overflow: visible;
+            width: 290px; /* Fixed base width */
+            height: 600px; /* Fixed base height */
             margin: 0 auto;
+            transform-origin: center center;
+            /* Will be scaled responsively via CSS transforms */
         }
 
         .phone-mockup-video {
             position: absolute;
-            top: 3.7%;
-            left: 7.6%;
-            width: 84.8%;
-            height: 92.6%;
-            border-radius: 5%;
+            top: 22px; /* Fixed pixels from phone frame */
+            left: 22px; /* Fixed pixels from phone frame */
+            width: 246px; /* Fixed pixels - screen area */  
+            height: 556px; /* Fixed pixels - screen area */
+            border-radius: 20px;
             object-fit: cover;
             z-index: 1;
             background: #f0f0f0;
@@ -514,30 +521,48 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 290px; /* Fixed pixels to match container exactly */
+            height: 600px; /* Fixed pixels to match container exactly */
             background-image: url('./iphone-frame.png');
-            background-size: contain;
+            background-size: 290px 600px; /* Exact size - no scaling */
             background-position: center;
             background-repeat: no-repeat;
             pointer-events: none;
             z-index: 30;
         }
 
+        /* Responsive scaling - scale entire unit together */
+        @media (max-height: 800px) {
+            .phone-mockup {
+                transform: scale(0.8);
+            }
+        }
+
+        @media (max-height: 700px) {
+            .phone-mockup {
+                transform: scale(0.7);
+            }
+        }
+
+        @media (max-height: 600px) {
+            .phone-mockup {
+                transform: scale(0.6);
+            }
+        }
+
         .video-overlay {
             position: absolute;
-            top: 55.5%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 76%;
-            height: 23%;
-            border-radius: 2.3%;
+            top: 243px; /* Fixed pixel positioning in screen area */
+            left: 44px; /* Fixed pixel positioning in screen area */
+            width: 202px; /* Fixed pixel width to match screen area */
+            height: 138px; /* Fixed pixel height for video area */
+            border-radius: 14px;
             overflow: hidden;
             z-index: 20;
         }
 
         .video-overlay:hover {
-            transform: translate(-50%, -50%) scale(1.02);
+            transform: scale(1.02);
         }
 
         .video-overlay .video-component {
@@ -979,11 +1004,15 @@
                 height: 4px;
             }
             
-            /* Responsive phone mockup and controls */
+            /* Mobile responsive - additional scaling for small screens */
             .phone-mockup {
-                max-width: none;
-                width: 90%;
-                max-height: calc(100vh - 80px);
+                transform: scale(0.55);
+            }
+            
+            @media (max-width: 400px) {
+                .phone-mockup {
+                    transform: scale(0.45);
+                }
             }
             
             .carousel-controls {
@@ -1050,8 +1079,8 @@
         <!-- PHONE PREVIEW PANEL: Fixed Full-Height Phone Preview -->
         <section class="phone-panel" id="phone-preview-panel">
             <div class="app-preview">
-
-                <div class="phone-mockup">
+                <div class="phone-mockup-container">
+                    <div class="phone-mockup">
                     <!-- Background Video -->
                     <video class="phone-mockup-video" id="phoneBgVideo" autoplay muted loop playsinline>
                         <source src="./app-bg-video.mp4" type="video/mp4">
@@ -1083,6 +1112,7 @@
                     
                     <!-- iPhone Frame Overlay -->
                     <div class="iphone-frame"></div>
+                    </div>
                 </div>
                 
                 <!-- Carousel Controls -->
