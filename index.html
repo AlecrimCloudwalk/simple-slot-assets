@@ -719,25 +719,25 @@
 
         .carousel-indicators {
             position: absolute;
-            bottom: 10px; /* Fixed pixel positioning within video overlay */
+            bottom: 0px; /* Set to 0px as requested */
             left: 16px; /* Match content-overlay padding exactly */
             right: 16px; /* Match content-overlay padding exactly */
             display: flex !important; /* Force display */
             justify-content: flex-start;
-            gap: 6px; /* Slightly larger gap */
+            gap: 4px; /* Smaller gap to ensure everything fits */
             z-index: 100; /* Higher z-index to ensure visibility */
             pointer-events: auto; /* Ensure clickable */
             background: rgba(255, 0, 0, 0.2); /* DEBUG: Red background to see position */
             min-height: 20px; /* Ensure it has height */
-            padding: 2px; /* Add some padding */
+            padding: 0; /* Removed padding as requested */
         }
 
         .carousel-indicators .indicator {
-            width: 16px; /* Larger for better visibility */
-            height: 6px; /* Taller for better visibility */
+            width: 12px; /* Smaller to fit within bounds */
+            height: 5px; /* Slightly shorter */
             border-radius: 3px; 
             background: rgba(255, 255, 255, 0.8); /* More opaque */
-            border: 2px solid rgba(0, 0, 0, 0.4); /* Stronger border */
+            border: 1px solid rgba(0, 0, 0, 0.4); /* Thinner border */
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Shadow for depth */
             cursor: pointer;
             transition: all 0.3s ease;
@@ -747,8 +747,8 @@
 
         .carousel-indicators .indicator.active {
             background: white; /* Fully opaque when active */
-            width: 20px; /* Much larger when active */
-            border: 2px solid rgba(0, 0, 0, 0.6); /* Very strong border */
+            width: 16px; /* Slightly larger when active but not too big */
+            border: 1px solid rgba(0, 0, 0, 0.6); /* Strong border but thinner */
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5); /* Stronger shadow */
         }
 
