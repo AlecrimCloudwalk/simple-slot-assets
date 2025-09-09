@@ -552,10 +552,10 @@
 
         .video-overlay {
             position: absolute;
-            top: 243px; /* Fixed pixel positioning in screen area */
-            left: 44px; /* Fixed pixel positioning in screen area */
-            width: 202px; /* Fixed pixel width to match screen area */
-            height: 138px; /* Fixed pixel height for video area */
+            top: 266px; /* Adjusted positioning */
+            left: 32px; /* Adjusted positioning */
+            width: 227px; /* Scaled width */
+            height: 132px; /* Height calculated for 1080x628 aspect ratio */
             border-radius: 14px;
             overflow: hidden;
             z-index: 20;
@@ -718,28 +718,29 @@
 
         .carousel-indicators {
             position: absolute;
-            bottom: 1.3%;
-            left: 2.7%;
-            right: 2.7%;
+            bottom: 8px; /* Fixed pixel positioning within video overlay */
+            left: 8px; /* Fixed pixel positioning */
+            right: 8px; /* Fixed pixel positioning */
             display: flex;
             justify-content: flex-start;
-            gap: 0.6%;
+            gap: 4px; /* Fixed pixel gap */
             z-index: 60;
-            /* Match content-overlay horizontal padding */
         }
 
         .carousel-indicators .indicator {
-            width: 3.3%;
-            height: 0.7%;
-            border-radius: 0.3%;
-            background: rgba(255, 255, 255, 0.4);
+            width: 12px; /* Slightly larger for better visibility */
+            height: 4px; /* Slightly taller for better visibility */
+            border-radius: 2px; 
+            background: rgba(255, 255, 255, 0.6); /* More opaque for visibility */
+            border: 1px solid rgba(0, 0, 0, 0.2); /* Subtle border for definition */
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .carousel-indicators .indicator.active {
-            background: rgba(255, 255, 255, 0.9);
-            width: 5%;
+            background: rgba(255, 255, 255, 0.95); /* Very opaque when active */
+            width: 16px; /* Larger when active */
+            border: 1px solid rgba(0, 0, 0, 0.3); /* Stronger border when active */
         }
 
         .preview-controls {
