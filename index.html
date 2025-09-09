@@ -180,7 +180,7 @@
             height: auto;
         }
 
-        .slot-card:hover {
+        .slot-card:hover:not(.modal-active) {
             border-color: #667eea;
             background: #f0f4ff;
             transform: translateY(-2px) scale(1.02);
@@ -225,11 +225,13 @@
             cursor: pointer;
         }
 
-        /* Only show dashed border for empty slots - but make them horizontal too */
+        /* Only show dashed border for empty slots - enforce horizontal aspect ratio */
         .slot-content:not(.has-asset) {
             aspect-ratio: 1080 / 682;
             border: 2px dashed #ddd;
             min-width: 150px;
+            height: auto !important;
+            max-height: none !important;
         }
 
         /* Remove border and padding for slots with assets */
@@ -266,10 +268,12 @@
 
         .slot-preview {
             width: 100%;
-            aspect-ratio: 1080 / 682;
+            height: auto !important;
+            aspect-ratio: 1080 / 682 !important;
             object-fit: cover;
             border-radius: 6px;
             display: block;
+            max-height: none !important;
             /* Performance optimizations */
             will-change: auto;
             backface-visibility: hidden;
@@ -282,11 +286,11 @@
         }
 
         /* COMPLETELY NEW HOVER SYSTEM - Modal Style */
-        .slot-card:hover {
+        .slot-card.modal-active {
             z-index: 1000;
         }
 
-        .slot-card:hover .slot-content {
+        .slot-card.modal-active .slot-content {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -304,24 +308,22 @@
             transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
 
-        /* Fixed backdrop blur overlay */
-        .slot-card:hover::before {
+        /* Working backdrop - using body overlay instead of ::before */
+        body.slot-modal-open::after {
             content: '';
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(3px);
-            z-index: 999;
-            transition: all 0.15s ease;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 998;
+            transition: all 0.2s ease;
         }
 
         /* Preview image/video in hover */
-        .slot-card:hover .slot-preview {
+        .slot-card.modal-active .slot-preview {
             width: 100%;
             height: auto;
             max-height: 250px;
@@ -355,7 +357,7 @@
             overflow: hidden;
         }
 
-        .slot-card:hover .slot-info {
+        .slot-card.modal-active .slot-info {
             opacity: 1;
             max-height: none;
             padding: 12px;
@@ -396,7 +398,7 @@
             pointer-events: none;
         }
 
-        .slot-card:hover .slot-actions {
+        .slot-card.modal-active .slot-actions {
             opacity: 1;
             pointer-events: auto;
             position: absolute;
@@ -421,7 +423,7 @@
             pointer-events: none;
         }
 
-        .slot-card:hover .slot-voting {
+        .slot-card.modal-active .slot-voting {
             opacity: 1;
             pointer-events: auto;
             padding: 8px 12px;
@@ -431,48 +433,48 @@
         }
 
         /* Enhanced buttons in modal hover */
-        .slot-card:hover .btn-vote {
+        .slot-card.modal-active .btn-vote {
             padding: 6px 12px;
             font-size: 0.85rem;
             min-width: 70px;
             font-weight: 500;
         }
 
-        .slot-card:hover .btn-comments {
+        .slot-card.modal-active .btn-comments {
             padding: 6px 12px;
             font-size: 0.85rem;
             min-width: 70px;
             font-weight: 500;
         }
 
-        .slot-card:hover .slot-actions .btn {
+        .slot-card.modal-active .slot-actions .btn {
             padding: 6px 12px;
             font-size: 0.85rem;
             font-weight: 500;
         }
 
         /* Modal content structure */
-        .slot-card:hover .slot-content > * {
+        .slot-card.modal-active .slot-content > * {
             position: relative;
             z-index: 1;
         }
 
         /* Enhanced modal text elements */
-        .slot-card:hover .slot-filename {
+        .slot-card.modal-active .slot-filename {
             font-size: 0.9rem;
             color: #333;
             font-weight: 600;
             margin-bottom: 6px;
         }
 
-        .slot-card:hover .slot-url {
+        .slot-card.modal-active .slot-url {
             font-size: 0.8rem;
             padding: 6px 10px;
             margin-bottom: 8px;
         }
 
         /* Organize modal layout vertically */
-        .slot-card:hover .slot-content {
+        .slot-card.modal-active .slot-content {
             display: flex;
             flex-direction: column;
         }
@@ -3239,6 +3241,11 @@
                     card.classList.remove('has-upvotes');
                 }
                 
+                // Setup modal behavior
+                if (slotModalManager) {
+                    slotModalManager.setupSlotCard(card);
+                }
+                
                 return card;
             }
 
@@ -5214,9 +5221,80 @@
             assetManager.refreshData();
         }
 
+        // Modal management for better hover behavior
+        class SlotModalManager {
+            constructor() {
+                this.activeModal = null;
+                this.mouseLeaveTimeout = null;
+            }
+
+            showModal(slotCard) {
+                // Clear any pending hide
+                if (this.mouseLeaveTimeout) {
+                    clearTimeout(this.mouseLeaveTimeout);
+                    this.mouseLeaveTimeout = null;
+                }
+
+                // Hide any existing modal
+                this.hideModal();
+
+                // Show new modal
+                this.activeModal = slotCard;
+                slotCard.classList.add('modal-active');
+                document.body.classList.add('slot-modal-open');
+
+                // Add event listener to modal content for proper hover behavior
+                const modalContent = slotCard.querySelector('.slot-content');
+                if (modalContent) {
+                    modalContent.addEventListener('mouseleave', (e) => {
+                        // Only hide if mouse really leaves the modal content area
+                        if (!modalContent.contains(e.relatedTarget)) {
+                            this.hideModal();
+                        }
+                    });
+                }
+            }
+
+            hideModal() {
+                if (this.activeModal) {
+                    this.activeModal.classList.remove('modal-active');
+                    this.activeModal = null;
+                }
+                document.body.classList.remove('slot-modal-open');
+            }
+
+            setupSlotCard(slotCard) {
+                slotCard.addEventListener('mouseenter', () => {
+                    this.showModal(slotCard);
+                });
+
+                slotCard.addEventListener('mouseleave', (e) => {
+                    // Add slight delay to prevent flickering
+                    this.mouseLeaveTimeout = setTimeout(() => {
+                        // Only hide if we're not entering a child element
+                        if (!slotCard.contains(e.relatedTarget)) {
+                            this.hideModal();
+                        }
+                    }, 50);
+                });
+            }
+        }
+
+        // Global modal manager
+        let slotModalManager;
+
         // Initialize the application
         document.addEventListener('DOMContentLoaded', () => {
             assetManager = new CloudWalkAssetManager();
+            slotModalManager = new SlotModalManager();
+            
+            // Setup modal behavior for any existing slot cards
+            setTimeout(() => {
+                const existingSlotCards = document.querySelectorAll('.slot-card');
+                existingSlotCards.forEach(card => {
+                    slotModalManager.setupSlotCard(card);
+                });
+            }, 1000);
             
             // Note: "__cf_bm" cookie warnings in console are from Cloudflare (Supabase CDN)
             // These are bot management cookies and the warnings are harmless but unavoidable
