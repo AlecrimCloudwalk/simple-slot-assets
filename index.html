@@ -724,7 +724,7 @@
             right: 16px; /* Match content-overlay padding exactly */
             display: flex !important; /* Force display */
             justify-content: flex-start;
-            gap: 4px; /* Smaller gap to ensure everything fits */
+            gap: 5px; /* Balanced gap */
             z-index: 100; /* Higher z-index to ensure visibility */
             pointer-events: auto; /* Ensure clickable */
             background: rgba(255, 0, 0, 0.2); /* DEBUG: Red background to see position */
@@ -733,8 +733,8 @@
         }
 
         .carousel-indicators .indicator {
-            width: 12px; /* Smaller to fit within bounds */
-            height: 5px; /* Slightly shorter */
+            width: 14px; /* Balanced size - between 12px and 16px */
+            height: 5px; /* Keep height the same */
             border-radius: 3px; 
             background: rgba(255, 255, 255, 0.8); /* More opaque */
             border: 1px solid rgba(0, 0, 0, 0.4); /* Thinner border */
@@ -747,7 +747,7 @@
 
         .carousel-indicators .indicator.active {
             background: white; /* Fully opaque when active */
-            width: 16px; /* Slightly larger when active but not too big */
+            width: 18px; /* Balanced active size - between 16px and 20px */
             border: 1px solid rgba(0, 0, 0, 0.6); /* Strong border but thinner */
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5); /* Stronger shadow */
         }
