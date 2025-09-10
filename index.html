@@ -278,58 +278,27 @@
             animation: none;
         }
 
-        /* BETTER HOVER SYSTEM - Modal Style with proper spacing */
+        /* SUBTLE HOVER SYSTEM - Just scale up slightly */
         .slot-card:hover {
-            z-index: 1000;
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px) scale(1.02);
+            z-index: 10;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
         }
 
         .slot-card:hover .slot-content {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 600px;
-            max-width: 90vw;
-            max-height: 80vh;
-            z-index: 1001;
-            border-radius: 12px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+            transform: scale(1.1);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             background: white;
-            padding: 0;
-            border: none;
-            overflow: hidden;
-        }
-
-        /* Backdrop blur overlay */
-        .slot-card:hover::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(4px);
-            z-index: 999;
-        }
-
-        /* Preview image/video in hover - maintain aspect ratio */
-        .slot-card:hover .slot-preview {
-            width: 100%;
-            aspect-ratio: 1080 / 682;
-            max-height: 300px;
-            object-fit: cover;
-            border-radius: 8px 8px 0 0;
-            margin: 0;
         }
         
-        /* Modal content structure - no transform needed */
+        /* Let child elements inherit the parent scaling */
         .slot-card:hover .slot-preview,
         .slot-card:hover .slot-actions,
         .slot-card:hover .slot-info {
             transform: none;
-            position: relative;
-            z-index: 1;
         }
 
         .slot-preview[src] {
@@ -350,19 +319,16 @@
 
         .slot-info {
             text-align: center;
+            margin-top: 4px;
             opacity: 0;
-            transition: all 0.3s ease;
+            transition: opacity 0.3s ease;
             max-height: 0;
             overflow: hidden;
         }
 
         .slot-card:hover .slot-info {
             opacity: 1;
-            max-height: none;
-            padding: 15px;
-            background: #f8f9fa;
-            border-top: 1px solid #e9ecef;
-            margin-top: 0;
+            max-height: 100px;
         }
 
         .slot-filename {
@@ -389,44 +355,29 @@
 
         .slot-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
+            margin-top: 6px;
             justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
-            pointer-events: none;
         }
 
         .slot-card:hover .slot-actions {
             opacity: 1;
-            pointer-events: auto;
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 10;
-            background: rgba(255,255,255,0.9);
-            padding: 8px;
-            border-radius: 6px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .slot-voting {
             display: flex;
-            gap: 8px;
+            gap: 4px;
+            margin-top: 4px;
             justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
             flex-wrap: wrap;
-            pointer-events: none;
         }
 
         .slot-card:hover .slot-voting {
             opacity: 1;
-            pointer-events: auto;
-            padding: 10px 15px;
-            background: white;
-            border-top: 1px solid #e9ecef;
-            margin: 0;
         }
 
         .btn-vote {
@@ -468,46 +419,6 @@
             background: #bbdefb;
         }
 
-        /* Enhanced buttons in modal hover */
-        .slot-card:hover .btn-vote {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            min-width: 80px;
-            font-weight: 500;
-        }
-
-        .slot-card:hover .btn-comments {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            min-width: 80px;
-            font-weight: 500;
-        }
-
-        .slot-card:hover .slot-actions .btn {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* Enhanced modal text elements */
-        .slot-card:hover .slot-filename {
-            font-size: 1rem;
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .slot-card:hover .slot-url {
-            font-size: 0.85rem;
-            padding: 8px 12px;
-            margin-bottom: 10px;
-        }
-
-        /* Organize modal layout vertically */
-        .slot-card:hover .slot-content {
-            display: flex;
-            flex-direction: column;
-        }
 
         /* Visual indicator for upvoted slots */
         .slot-card.has-upvotes {
